@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use xcb::{x, x::{EventMask, ConfigureRequestEvent}};
 
 fn add_window(con: &xcb::Connection, e: ConfigureRequestEvent) -> xcb::Result<()> {
@@ -17,7 +19,7 @@ fn main() -> xcb::Result<()> {
         window: scr.root(),
         value_list: &[
             x::Cw::BackPixel(scr.black_pixel()),
-            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::EXPOSURE | EventMask::STRUCTURE_NOTIFY | EventMask::SUBSTRUCTURE_NOTIFY | EventMask:: SUBSTRUCTURE_REDIRECT),
+            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask:: SUBSTRUCTURE_REDIRECT),
         ]
     });
 
@@ -26,10 +28,12 @@ fn main() -> xcb::Result<()> {
     loop {
         match con.wait_for_event()? {
             xcb::Event::X(x::Event::KeyPress(e)) => {
+                println!("{}", e.detail());
+
                 if e.detail() == 58 { // 'm'
                     break Ok(());
                 } else if e.detail() == 38 { // 'a'
-                    // ...
+                    Command::new("arandr");
                 }
             }
 
