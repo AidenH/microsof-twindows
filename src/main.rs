@@ -68,27 +68,44 @@ fn main() -> xcb::Result<()> {
                         .arg("/usr/bin/feh /home/lurkcs/Pictures/fin.jpg")
                         .spawn()
                         .expect("unable to launch");
-                } else if e.detail() == 39 { // 's'
+                } else if e.detail() == 36 && e.state() == x::KeyButMask::MOD1 { // alt ent
                     Command::new("zsh")
                         .arg("-c")
                         .arg("/usr/bin/st")
                         .spawn()
                         .expect("no st");
-                } else if e.detail() == 56 && e.state() == x::KeyButMask::MOD1 {
+                } else if e.detail() == 40 && e.state() == x::KeyButMask::MOD1 { // alt d
                     Command::new("zsh")
                         .arg("-c")
-                        .arg("/usr/bin/qutebrowser &")
+                        .arg("/usr/bin/dmenu_run")
                         .spawn()
                         .expect("unable to load qutebrowser");
+                } else if e.detail() == 24 && e.state() == x::KeyButMask::MOD1 {
+                    //destroy_win(win_list, )
                 }
             }
 
-            xcb::Event::X(x::Event::CreateNotify(e)) => {
+            /*xcb::Event::X(x::Event::CreateNotify(e)) => {
                 println!("{:?}", e);
                 //if e.override_redirect() == false {
                 add_window(&con, e.window())?;
                 win_list.push(e.window());
                 //}
+            }*/
+
+            xcb::Event::X(x::Event::EnterNotify(_e)) => {
+                println!("enter");
+            }
+
+            xcb::Event::X(x::Event::LeaveNotify(_e)) => {
+                println!("leave");
+            }
+
+            xcb::Event::X(x::Event::MapRequest(_e)) => {
+                //println!("{:?}", _e);
+                add_window(&con, _e.window())?;
+                win_list.push(_e.window());
+                //println!("{:?}", win_list);
             }
 
             _ => {}
