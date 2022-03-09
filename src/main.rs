@@ -15,6 +15,15 @@ fn add_window(con: &xcb::Connection, w: Window) -> xcb::Result<()> {
 
     con.check_request(cookie)?;
 
+    let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
+        window: w,
+        value_list: &[
+            x::Cw::EventMask(EventMask::ENTER_WINDOW | EventMask::LEAVE_WINDOW),
+        ]
+    });
+
+    con.check_request(cookie)?;
+
     con.send_request(&x::MapWindow {
         window: w,
     });
@@ -35,7 +44,7 @@ fn main() -> xcb::Result<()> {
         window: scr.root(),
         value_list: &[
             x::Cw::BackPixel(scr.black_pixel()),
-            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::EXPOSURE | EventMask::STRUCTURE_NOTIFY | EventMask::SUBSTRUCTURE_NOTIFY | EventMask::SUBSTRUCTURE_REDIRECT),
+            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::STRUCTURE_NOTIFY | EventMask::SUBSTRUCTURE_NOTIFY | EventMask::SUBSTRUCTURE_REDIRECT),
         ]
     });
 
