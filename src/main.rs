@@ -33,6 +33,10 @@ fn add_window(con: &xcb::Connection, w: Window) -> xcb::Result<()> {
     Ok(())
 }
 
+/*fn destroy_win(win_list: Vec<Window>, e: Window) {
+    let a = win_list.iter().position(|&x| x == e;
+}*/
+
 fn main() -> xcb::Result<()> {
     let mut win_list = Vec::<Window>::new();
 
