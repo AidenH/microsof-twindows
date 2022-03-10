@@ -44,6 +44,19 @@ fn destroy_win(con: &xcb::Connection, win_list: &Vec<Window>, e: Window) -> xcb:
     Ok(a)
 }
 
+fn focus(opt: bool, win: Window) {
+    match opt {
+        // focus
+        true => {
+
+        }
+        // defocus
+        false => {
+
+        }
+    }
+}
+
 fn main() -> xcb::Result<()> {
     let mut win_list = Vec::<Window>::new(); // list of all open windows
     let mut curr_win = Vec::<Window>::new(); // currently focused window
@@ -97,10 +110,12 @@ fn main() -> xcb::Result<()> {
 
             xcb::Event::X(x::Event::EnterNotify(_e)) => {
                 curr_win.push(_e.event());
+                focus(true, _e.event());
             }
 
             xcb::Event::X(x::Event::LeaveNotify(_e)) => {
                 curr_win.pop();
+                focus(false, _e.event());
             }
 
             xcb::Event::X(x::Event::MapRequest(_e)) => {
