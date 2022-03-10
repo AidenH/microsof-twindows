@@ -18,7 +18,7 @@ fn add_window(con: &xcb::Connection, w: Window) -> xcb::Result<()> {
     let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
         window: w,
         value_list: &[
-            x::Cw::EventMask(EventMask::ENTER_WINDOW | EventMask::LEAVE_WINDOW),
+            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::ENTER_WINDOW | EventMask::LEAVE_WINDOW | EventMask::STRUCTURE_NOTIFY),
         ]
     });
 
@@ -33,12 +33,20 @@ fn add_window(con: &xcb::Connection, w: Window) -> xcb::Result<()> {
     Ok(())
 }
 
-/*fn destroy_win(win_list: Vec<Window>, e: Window) {
-    let a = win_list.iter().position(|&x| x == e;
-}*/
+fn destroy_win(con: &xcb::Connection, win_list: &Vec<Window>, e: Window) -> xcb::Result<usize> {
+    let cookie = con.send_request_checked(&x::DestroyWindow {
+        window: e,
+    });
+
+    con.check_request(cookie)?;
+
+    let a = win_list.iter().position(|&x| x == e).unwrap();
+    Ok(a)
+}
 
 fn main() -> xcb::Result<()> {
-    let mut win_list = Vec::<Window>::new();
+    let mut win_list = Vec::<Window>::new(); // list of all open windows
+    let mut curr_win = Vec::<Window>::new(); // currently focused window
 
     let (con, scr_num) = xcb::Connection::connect(None).unwrap();
     let setup = con.get_setup();
@@ -48,7 +56,7 @@ fn main() -> xcb::Result<()> {
         window: scr.root(),
         value_list: &[
             x::Cw::BackPixel(scr.black_pixel()),
-            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::STRUCTURE_NOTIFY | EventMask::SUBSTRUCTURE_NOTIFY | EventMask::SUBSTRUCTURE_REDIRECT),
+            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::SUBSTRUCTURE_REDIRECT),
         ]
     });
 
@@ -58,14 +66,13 @@ fn main() -> xcb::Result<()> {
         match con.wait_for_event()? {
             xcb::Event::X(x::Event::KeyPress(e)) => {
                 //println!("{:?}", e);
-                //println!("WINDOWS: {:?}", win_list);
 
                 if e.detail() == 58 { // 'm'
                     break Ok(());
                 } else if e.detail() == 38 { // 'a'
                     Command::new("zsh")
                         .arg("-c")
-                        .arg("/usr/bin/feh /home/lurkcs/Pictures/fin.jpg")
+                        .arg("/usr/bin/arandr")
                         .spawn()
                         .expect("unable to launch");
                 } else if e.detail() == 36 && e.state() == x::KeyButMask::MOD1 { // alt ent
@@ -80,32 +87,25 @@ fn main() -> xcb::Result<()> {
                         .arg("/usr/bin/dmenu_run")
                         .spawn()
                         .expect("unable to load qutebrowser");
-                } else if e.detail() == 24 && e.state() == x::KeyButMask::MOD1 {
-                    //destroy_win(win_list, )
+                } else if e.detail() == 24 && e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt q
+                    if curr_win.len() != 0 {
+                        let remove_win = destroy_win(&con, &win_list, curr_win[0]).unwrap();
+                        win_list.remove(remove_win);
+                    }
                 }
             }
 
-            /*xcb::Event::X(x::Event::CreateNotify(e)) => {
-                println!("{:?}", e);
-                //if e.override_redirect() == false {
-                add_window(&con, e.window())?;
-                win_list.push(e.window());
-                //}
-            }*/
-
             xcb::Event::X(x::Event::EnterNotify(_e)) => {
-                println!("enter");
+                curr_win.push(_e.event());
             }
 
             xcb::Event::X(x::Event::LeaveNotify(_e)) => {
-                println!("leave");
+                curr_win.pop();
             }
 
             xcb::Event::X(x::Event::MapRequest(_e)) => {
-                //println!("{:?}", _e);
                 add_window(&con, _e.window())?;
                 win_list.push(_e.window());
-                //println!("{:?}", win_list);
             }
 
             _ => {}
