@@ -134,7 +134,11 @@ fn main() -> xcb::Result<()> {
 
             xcb::Event::X(x::Event::LeaveNotify(_e)) => {
                 curr_win.pop();
-                focus(false, &con, _e.event())?;
+
+                // if win_list contains _e's Window
+                if win_list.iter().any(|&x| x == _e.event()) {
+                    focus(false, &con, _e.event())?;
+                }
             }
 
             xcb::Event::X(x::Event::MapRequest(_e)) => {
