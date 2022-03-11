@@ -10,6 +10,7 @@ fn add_window(con: &xcb::Connection, w: Window) -> xcb::Result<()> {
             x::ConfigWindow::Y(100),
             x::ConfigWindow::Width(400),
             x::ConfigWindow::Height(400),
+            x::ConfigWindow::BorderWidth(2),
         ],
     });
 
@@ -18,6 +19,7 @@ fn add_window(con: &xcb::Connection, w: Window) -> xcb::Result<()> {
     let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
         window: w,
         value_list: &[
+            x::Cw::BorderPixel(0x444444),
             x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::ENTER_WINDOW | EventMask::LEAVE_WINDOW | EventMask::STRUCTURE_NOTIFY),
         ]
     });
@@ -41,20 +43,37 @@ fn destroy_win(con: &xcb::Connection, win_list: &Vec<Window>, e: Window) -> xcb:
     con.check_request(cookie)?;
 
     let a = win_list.iter().position(|&x| x == e).unwrap();
+
     Ok(a)
 }
 
-fn focus(opt: bool, win: Window) {
+fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
     match opt {
         // focus
         true => {
+            let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
+                window: win,
+                value_list: &[
+                    x::Cw::BorderPixel(0x0099dd),
+                ],
+            });
 
+            con.check_request(cookie)?;
         }
         // defocus
         false => {
+            let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
+                window: win,
+                value_list: &[
+                    x::Cw::BorderPixel(0x444444),
+                ],
+            });
 
+            con.check_request(cookie)?;
         }
     }
+
+    Ok(())
 }
 
 fn main() -> xcb::Result<()> {
@@ -110,12 +129,12 @@ fn main() -> xcb::Result<()> {
 
             xcb::Event::X(x::Event::EnterNotify(_e)) => {
                 curr_win.push(_e.event());
-                focus(true, _e.event());
+                focus(true, &con, _e.event())?;
             }
 
             xcb::Event::X(x::Event::LeaveNotify(_e)) => {
                 curr_win.pop();
-                focus(false, _e.event());
+                focus(false, &con, _e.event())?;
             }
 
             xcb::Event::X(x::Event::MapRequest(_e)) => {
