@@ -101,30 +101,25 @@ fn main() -> xcb::Result<()> {
     loop {
         match con.wait_for_event()? {
             xcb::Event::X(x::Event::KeyPress(e)) => {
-                //println!("{:?}", e);
 
-                if e.detail() == 58 { // 'm'
+                if e.detail() == 26 &&
+                    e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // ct-sh-'e'
+
                     break Ok(());
-                } else if e.detail() == 38 { // 'a'
-                    Command::new("zsh")
-                        .arg("-c")
-                        .arg("/usr/bin/arandr")
-                        .spawn()
-                        .expect("unable to launch");
                 } else if e.detail() == 36 && e.state() == x::KeyButMask::MOD1 { // alt ent
                     Command::new("zsh")
                         .arg("-c")
                         .arg("/usr/bin/st")
                         .spawn()
                         .expect("no st");
-                } else if e.detail() == 40 && e.state() == x::KeyButMask::MOD1 { // alt d
+                } else if e.detail() == 40 && e.state() == x::KeyButMask::MOD1 { // alt 'd'
                     Command::new("zsh")
                         .arg("-c")
                         .arg("/usr/bin/dmenu_run")
                         .spawn()
                         .expect("unable to load qutebrowser");
                 } else if e.detail() == 24 &&
-                    e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt q
+                    e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt 'q'
 
                     if !curr_win.is_empty() && !win_list.is_empty() {
                         let remove_win = destroy_win(&con, &win_list, curr_win[0]).unwrap();
