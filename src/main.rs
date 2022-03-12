@@ -122,7 +122,7 @@ fn main() -> xcb::Result<()> {
                 } else if e.detail() == 24 &&
                     e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt q
 
-                    if !curr_win.is_empty() {
+                    if !curr_win.is_empty() && !win_list.is_empty() {
                         let remove_win = destroy_win(&con, &win_list, curr_win[0]).unwrap();
                         win_list.remove(remove_win);
                     }
@@ -130,9 +130,12 @@ fn main() -> xcb::Result<()> {
             }
 
             xcb::Event::X(x::Event::UnmapNotify(_e)) => {
-                if !win_list.is_empty() {
-                    let remove_win = win_list.iter().position(|&x| x == _e.event()).unwrap();
-                    win_list.remove(remove_win);
+                let remove_win = win_list.iter().position(|&x| x == _e.event());
+                match remove_win {
+                    Some(win) => {
+                        win_list.remove(win);
+                    }
+                    None => {}
                 }
             }
 
