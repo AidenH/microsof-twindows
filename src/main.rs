@@ -76,7 +76,7 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
     Ok(())
 }
 
-fn refresh_tiles() {
+fn redraw_tiles() {
     // tiling logic
 }
 
@@ -155,7 +155,6 @@ fn main() -> xcb::Result<()> {
             xcb::Event::X(x::Event::MapRequest(_e)) => {
                 add_window(&con, _e.window())?;
                 win_list.push(_e.window());
-                refresh_tiles();
             }
 
             _ => {}
