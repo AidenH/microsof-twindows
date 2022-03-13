@@ -33,7 +33,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         splits_into: Vec::<usize>::new(),
         window: w,
         x: 0,
-        y: 0,
+        y: 14,
         width: state.scr.width_in_pixels() as u32,
         height: state.scr.height_in_pixels() as u32,
     };
@@ -48,16 +48,20 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         win_item.splits_from.push(state.item_list[parent].id);
         state.item_list[parent].splits_into.push(win_item.id);
 
-        if win_item.width > win_item.height { // vertical split
-            win_item.x = state.item_list[parent].width as i32 / 2;
+        if state.item_list[parent].width > state.item_list[parent].height {
+            // vertical split
+            win_item.x = state.item_list[parent].x +
+                (state.item_list[parent].width as i32 / 2);
             win_item.y = state.item_list[parent].y;
             win_item.width = state.item_list[parent].width / 2;
             win_item.height = state.item_list[parent].height;
 
             state.item_list[parent].width = win_item.width;
         } else {
+            // horizontal split
             win_item.x = state.item_list[parent].x;
-            win_item.y = state.item_list[parent].height as i32 / 2;
+            win_item.y = state.item_list[parent].y +
+                state.item_list[parent].height as i32 / 2;
             win_item.width = state.item_list[parent].width;
             win_item.height = state.item_list[parent].height / 2;
 
@@ -67,8 +71,8 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
 
     state.item_list.push(win_item);
 
-    println!("{:?}", state.item_list);
     for i in &state.item_list {
+        println!("x: {} y: {}", i.x, i.y);
         let cookie = state.con.send_request_checked(&x::ConfigureWindow {
             window: i.window,
             value_list: &[
