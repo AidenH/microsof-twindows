@@ -25,6 +25,7 @@ struct WindowItem {
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
     let mut win_item: WindowItem;
     let border: u32 = 2;
+    let status_bar_offset = 13;
 
     // default full screen if no other windows open
     win_item = WindowItem {
@@ -33,9 +34,9 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         splits_into: Vec::<usize>::new(),
         window: w,
         x: 0,
-        y: 14,
+        y: status_bar_offset,
         width: state.scr.width_in_pixels() as u32,
-        height: state.scr.height_in_pixels() as u32,
+        height: state.scr.height_in_pixels() as u32 - status_bar_offset as u32,
     };
 
     // if other windows open, modify sizes based on window new window will be split from
