@@ -5,7 +5,6 @@ use xcb::{x::{self, Window}, x::EventMask};
 struct State<'a> {
     con: &'a xcb::Connection,
     scr: &'a x::Screen,
-    wins: Vec<Window>,
     curr_win: Vec<Window>,
     item_list: Vec<WindowItem>,
 }
@@ -38,9 +37,9 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         width: state.scr.width_in_pixels() as u32,
         height: state.scr.height_in_pixels() as u32 - status_bar_offset as u32,
     };
-
+    println!("{:?}", state.curr_win);
     // if other windows open, modify sizes based on window new window will be split from
-    if !state.item_list.is_empty() {
+    if !state.item_list.is_empty() && !state.curr_win.is_empty() {
         let parent = state.item_list
             .iter()
             .position(|x| x.window == state.curr_win[0] )
@@ -117,12 +116,11 @@ fn destroy_win(mut state: State) -> xcb::Result<State> {
 
     state.con.check_request(cookie)?;
 
-    let remove_win = state.wins
+    let remove_win_item = state.item_list
         .iter()
-        .position(|&x| x == state.curr_win[0])
+        .position(|x| x.window == state.curr_win[0])
         .unwrap();
-
-    state.wins.remove(remove_win);
+    state.item_list.remove(remove_win_item);
 
     Ok(state)
 }
@@ -164,7 +162,6 @@ fn main() -> xcb::Result<()> {
     let mut state = State {
         con: &connection,
         scr: &screen,
-        wins: Vec::<Window>::new(),
         curr_win: Vec::<Window>::new(),
         item_list: Vec::<WindowItem>::new(),
     };
@@ -202,20 +199,19 @@ fn main() -> xcb::Result<()> {
                 } else if e.detail() == 24 &&
                     e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt 'q'
 
-                    if !state.curr_win.is_empty() && !state.wins.is_empty() {
+                    if !state.curr_win.is_empty() && !state.item_list.is_empty() {
                         state = destroy_win(state).unwrap();
                     }
                 }
             }
 
             xcb::Event::X(x::Event::UnmapNotify(_e)) => {
-                let remove_win = state.wins
+                let remove_win = state.item_list
                     .iter()
-                    .position(|&x| x == _e
-                              .event());
+                    .position(|x| x.window == _e.event());
                 match remove_win {
                     Some(win) => {
-                        state.wins.remove(win);
+                        state.item_list.remove(win);
                     }
                     None => {}
                 }
@@ -230,7 +226,7 @@ fn main() -> xcb::Result<()> {
                 state.curr_win.pop();
 
                 // if win_list contains _e's Window
-                if state.wins.iter().any(|&x| x == _e.event()) {
+                if state.item_list.iter().any(|x| x.window == _e.event()) {
                     focus(false, &state.con, _e.event())?;
                 }
             }
@@ -238,7 +234,6 @@ fn main() -> xcb::Result<()> {
             xcb::Event::X(x::Event::MapRequest(_e)) => {
                 println!("add");
                 state = add_window(state, _e.window())?;
-                state.wins.push(_e.window());
             }
 
             _ => {}
