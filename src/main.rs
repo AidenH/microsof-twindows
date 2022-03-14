@@ -105,48 +105,26 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         });
     }
 
-    /*let cookie = state.con.send_request_checked(&x::ConfigureWindow {
-        window: w,
-        value_list: &[
-            x::ConfigWindow::X(win_item.x),
-            x::ConfigWindow::Y(win_item.y),
-            x::ConfigWindow::Width(win_item.width-border-2),
-            x::ConfigWindow::Height(win_item.height-border-2),
-            x::ConfigWindow::BorderWidth(border),
-        ],
-    });
-
-    state.con.check_request(cookie)?;
-
-    let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
-        window: w,
-        value_list: &[
-            x::Cw::BorderPixel(0x444444),
-            x::Cw::EventMask(EventMask::KEY_PRESS | EventMask::ENTER_WINDOW | EventMask::LEAVE_WINDOW | EventMask::STRUCTURE_NOTIFY),
-        ]
-    });
-
-    state.con.check_request(cookie)?;
-
-    state.con.send_request(&x::MapWindow {
-        window: w,
-    });*/
-
     state.con.flush()?;
 
     Ok(state)
 }
 
-fn destroy_win(state: &State) -> xcb::Result<usize> {
+fn destroy_win(mut state: State) -> xcb::Result<State> {
     let cookie = state.con.send_request_checked(&x::DestroyWindow {
         window: state.curr_win[0],
     });
 
     state.con.check_request(cookie)?;
 
-    let a = state.wins.iter().position(|&x| x == state.curr_win[0]).unwrap();
+    let remove_win = state.wins
+        .iter()
+        .position(|&x| x == state.curr_win[0])
+        .unwrap();
 
-    Ok(a)
+    state.wins.remove(remove_win);
+
+    Ok(state)
 }
 
 fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
@@ -225,14 +203,16 @@ fn main() -> xcb::Result<()> {
                     e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt 'q'
 
                     if !state.curr_win.is_empty() && !state.wins.is_empty() {
-                        let remove_win = destroy_win(&state).unwrap();
-                        state.wins.remove(remove_win);
+                        state = destroy_win(state).unwrap();
                     }
                 }
             }
 
             xcb::Event::X(x::Event::UnmapNotify(_e)) => {
-                let remove_win = state.wins.iter().position(|&x| x == _e.event());
+                let remove_win = state.wins
+                    .iter()
+                    .position(|&x| x == _e
+                              .event());
                 match remove_win {
                     Some(win) => {
                         state.wins.remove(win);
