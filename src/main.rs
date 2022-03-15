@@ -23,6 +23,7 @@ struct WindowItem {
 }
 
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
+    let max_split_depth = 2;
     let mut win_item: WindowItem;
     let border: u32 = 2;
     let status_bar_offset = 13;
@@ -52,10 +53,11 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
 
         // increment split depth count
         win_item.split_depth = state.item_list[parent].split_depth + 1;
+        state.item_list[parent].split_depth += 1;
 
         // if new window is within split depth limits, proceed with size manipulation.
         // otherwise it's pointless
-        if win_item.split_depth <= 2 {
+        if win_item.split_depth <= max_split_depth {
             if state.item_list[parent].width > state.item_list[parent].height {
                 // vertical split
                 win_item.x = state.item_list[parent].x +
@@ -79,7 +81,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
     }
 
     // only add to window rendering list if within split depth limits
-    if win_item.split_depth <= 2 {
+    if win_item.split_depth <= max_split_depth {
         state.item_list.push(win_item);
     }
 
@@ -202,13 +204,13 @@ fn main() -> xcb::Result<()> {
                         .arg("-c")
                         .arg("/usr/bin/st")
                         .spawn()
-                        .expect("no st");
+                        .expect("failed to load terminal");
                 } else if e.detail() == 40 && e.state() == x::KeyButMask::MOD1 { // alt 'd'
                     Command::new("zsh")
                         .arg("-c")
                         .arg("/usr/bin/dmenu_run")
                         .spawn()
-                        .expect("unable to load qutebrowser");
+                        .expect("failed to load dmenu");
                 } else if e.detail() == 24 &&
                     e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt 'q'
 
