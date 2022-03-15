@@ -19,6 +19,7 @@ struct WindowItem {
     y: i32,
     width: u32,
     height: u32,
+    split_depth: i32,
 }
 
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
@@ -36,6 +37,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         y: status_bar_offset,
         width: state.scr.width_in_pixels() as u32,
         height: state.scr.height_in_pixels() as u32 - status_bar_offset as u32,
+        split_depth: 0,
     };
     println!("{:?}", state.curr_win);
     // if other windows open, modify sizes based on window new window will be split from
@@ -48,29 +50,40 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         win_item.splits_from.push(state.item_list[parent].id);
         state.item_list[parent].splits_into.push(win_item.id);
 
-        if state.item_list[parent].width > state.item_list[parent].height {
-            // vertical split
-            win_item.x = state.item_list[parent].x +
-                (state.item_list[parent].width as i32 / 2);
-            win_item.y = state.item_list[parent].y;
-            win_item.width = state.item_list[parent].width / 2;
-            win_item.height = state.item_list[parent].height;
+        // increment split depth count
+        win_item.split_depth = state.item_list[parent].split_depth + 1;
 
-            state.item_list[parent].width = win_item.width;
-        } else {
-            // horizontal split
-            win_item.x = state.item_list[parent].x;
-            win_item.y = state.item_list[parent].y +
-                state.item_list[parent].height as i32 / 2;
-            win_item.width = state.item_list[parent].width;
-            win_item.height = state.item_list[parent].height / 2;
+        // if new window is within split depth limits, proceed with size manipulation.
+        // otherwise it's pointless
+        if win_item.split_depth <= 2 {
+            if state.item_list[parent].width > state.item_list[parent].height {
+                // vertical split
+                win_item.x = state.item_list[parent].x +
+                    (state.item_list[parent].width as i32 / 2);
+                win_item.y = state.item_list[parent].y;
+                win_item.width = state.item_list[parent].width / 2;
+                win_item.height = state.item_list[parent].height;
 
-            state.item_list[parent].height = win_item.height;
+                state.item_list[parent].width = win_item.width;
+            } else {
+                // horizontal split
+                win_item.x = state.item_list[parent].x;
+                win_item.y = state.item_list[parent].y +
+                    state.item_list[parent].height as i32 / 2;
+                win_item.width = state.item_list[parent].width;
+                win_item.height = state.item_list[parent].height / 2;
+
+                state.item_list[parent].height = win_item.height;
+            }
         }
     }
 
-    state.item_list.push(win_item);
+    // only add to window rendering list if within split depth limits
+    if win_item.split_depth <= 2 {
+        state.item_list.push(win_item);
+    }
 
+    // draw windows
     for i in &state.item_list {
         println!("x: {} y: {}", i.x, i.y);
         let cookie = state.con.send_request_checked(&x::ConfigureWindow {
