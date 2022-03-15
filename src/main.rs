@@ -23,7 +23,7 @@ struct WindowItem {
 }
 
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
-    let max_split_depth = 2;
+    let max_split_depth = 3;
     let mut win_item: WindowItem;
     let border: u32 = 2;
     let status_bar_offset = 13;
@@ -40,7 +40,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         height: state.scr.height_in_pixels() as u32 - status_bar_offset as u32,
         split_depth: 0,
     };
-    println!("{:?}", state.curr_win);
+
     // if other windows open, modify sizes based on window new window will be split from
     if !state.item_list.is_empty() && !state.curr_win.is_empty() {
         let parent = state.item_list
@@ -87,7 +87,6 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
 
     // draw windows
     for i in &state.item_list {
-        println!("x: {} y: {}", i.x, i.y);
         let cookie = state.con.send_request_checked(&x::ConfigureWindow {
             window: i.window,
             value_list: &[
@@ -125,17 +124,18 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
 }
 
 fn destroy_win(mut state: State) -> xcb::Result<State> {
+    let this_window = state.item_list
+        .iter()
+        .position(|x| x.window == state.curr_win[0])
+        .unwrap();
+
     let cookie = state.con.send_request_checked(&x::DestroyWindow {
         window: state.curr_win[0],
     });
 
     state.con.check_request(cookie)?;
 
-    let remove_win_item = state.item_list
-        .iter()
-        .position(|x| x.window == state.curr_win[0])
-        .unwrap();
-    state.item_list.remove(remove_win_item);
+    state.item_list.remove(this_window);
 
     Ok(state)
 }
@@ -247,7 +247,6 @@ fn main() -> xcb::Result<()> {
             }
 
             xcb::Event::X(x::Event::MapRequest(_e)) => {
-                println!("add");
                 state = add_window(state, _e.window())?;
             }
 
