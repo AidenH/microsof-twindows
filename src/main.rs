@@ -7,6 +7,7 @@ struct State<'a> {
     scr: &'a x::Screen,
     curr_win: Vec<Window>,
     item_list: Vec<WindowItem>,
+    border: u32,
 }
 
 #[derive(Debug)]
@@ -25,7 +26,6 @@ struct WindowItem {
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
     let max_split_depth = 3;
     let mut win_item: WindowItem;
-    let border: u32 = 2;
     let status_bar_offset = 13;
 
     // default full screen if no other windows open
@@ -81,9 +81,11 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
     }
 
     // only add to window rendering list if within split depth limits
-    if win_item.split_depth <= max_split_depth {
+    /*if win_item.split_depth <= max_split_depth {
         state.item_list.push(win_item);
-    }
+    }*/
+
+    state.item_list.push(win_item);
 
     // draw windows
     for i in &state.item_list {
@@ -92,9 +94,9 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
             value_list: &[
                 x::ConfigWindow::X(i.x),
                 x::ConfigWindow::Y(i.y),
-                x::ConfigWindow::Width(i.width-border-2),
-                x::ConfigWindow::Height(i.height-border-2),
-                x::ConfigWindow::BorderWidth(border),
+                x::ConfigWindow::Width(i.width-state.border-2),
+                x::ConfigWindow::Height(i.height-state.border-2),
+                x::ConfigWindow::BorderWidth(state.border),
             ],
         });
 
@@ -135,6 +137,12 @@ fn destroy_win(mut state: State) -> xcb::Result<State> {
 
     state.con.check_request(cookie)?;
 
+    // ideally for reparenting-based window swallow:
+    //
+    // for child in this.splits_into
+        //child.parent = this.parent
+        //this.child = child.parent
+
     state.item_list.remove(this_window);
 
     Ok(state)
@@ -169,6 +177,78 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
     Ok(())
 }
 
+fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
+    let cookie = state.con.send_request(&x::GetGeometry {
+        drawable: x::Drawable::Window(state.curr_win[0]),
+    });
+
+    let reply = state.con.wait_for_reply(cookie)?;
+
+    let index = state.item_list
+        .iter()
+        .position(|x| x.window == state.curr_win[0])
+        .unwrap();
+
+    // init with garbage value because it will be overwritten
+    let mut vals: [x::ConfigWindow; 2] =
+        [x::ConfigWindow::X(0), x::ConfigWindow::X(0)];
+    let scr_width = state.scr.width_in_pixels() as u32;
+    let scr_height = state.scr.height_in_pixels() as u32;
+
+    match opt {
+        "up" => {
+            if reply.y() == state.item_list[index].y as i16 {
+                state.item_list[index].y = 0;
+                state.item_list[index].height = scr_height;
+                vals = [
+                    x::ConfigWindow::Y(0),
+                    x::ConfigWindow::Height(scr_height - state.border*2),
+                ];
+            }
+        }
+        "left" => {
+            if reply.x() == state.item_list[index].x as i16 {
+                state.item_list[index].x = 0;
+                state.item_list[index].width = scr_width;
+                vals = [
+                    x::ConfigWindow::X(0),
+                    x::ConfigWindow::Width(scr_width - state.border*2),
+                ];
+            }
+        }
+        "down" => {
+            if reply.height() == (state.item_list[index].height - (state.border*2)) as u16 {
+                state.item_list[index].height =
+                    (state.scr.height_in_pixels() - reply.y() as u16) as u32 - 4;
+                vals = [
+                    x::ConfigWindow::Y(state.item_list[index].y),
+                    x::ConfigWindow::Height(state.item_list[index].height),
+                ];
+            }
+        }
+        "right" => {
+            if reply.width() == state.item_list[index].width as u16 {
+                state.item_list[index].width =
+                    (state.scr.width_in_pixels() - reply.x() as u16) as u32 - 4;
+                vals = [
+                    x::ConfigWindow::X(state.item_list[index].x),
+                    x::ConfigWindow::Width(state.item_list[index].width),
+                ];
+            }
+        }
+        _ => {}
+    }
+
+    let cookie = state.con.send_request_checked(&x::ConfigureWindow {
+        window: state.curr_win[0],
+        value_list: &vals,
+    });
+
+    state.con.check_request(cookie)?;
+
+    Ok(state)
+}
+
 fn main() -> xcb::Result<()> {
     let (connection, scr_num) = xcb::Connection::connect(None).unwrap();
     let setup = connection.get_setup();
@@ -179,6 +259,7 @@ fn main() -> xcb::Result<()> {
         scr: &screen,
         curr_win: Vec::<Window>::new(),
         item_list: Vec::<WindowItem>::new(),
+        border: 2,
     };
 
     let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
@@ -217,6 +298,22 @@ fn main() -> xcb::Result<()> {
                     if !state.curr_win.is_empty() && !state.item_list.is_empty() {
                         state = destroy_win(state).unwrap();
                     }
+                } else if e.detail() == 111 &&
+                    e.state() == x::KeyButMask::MOD1 {
+
+                    state = nudge(state, "up")?;
+                } else if e.detail() == 113 &&
+                    e.state() == x::KeyButMask::MOD1 {
+
+                    state = nudge(state, "left")?;
+                } else if e.detail() == 116 &&
+                    e.state() == x::KeyButMask::MOD1 {
+
+                    state = nudge(state, "down")?;
+                } else if e.detail() == 114 &&
+                    e.state() == x::KeyButMask::MOD1 {
+
+                    state = nudge(state, "right")?;
                 }
             }
 
