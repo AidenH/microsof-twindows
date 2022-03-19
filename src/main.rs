@@ -8,6 +8,7 @@ struct State<'a> {
     curr_win: Vec<Window>,
     item_list: Vec<WindowItem>,
     border: u32,
+    bar_width: i32,
 }
 
 #[derive(Debug)]
@@ -24,9 +25,8 @@ struct WindowItem {
 }
 
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
-    let max_split_depth = 3;
+    //let max_split_depth = 3;
     let mut win_item: WindowItem;
-    let status_bar_offset = 13;
 
     // default full screen if no other windows open
     win_item = WindowItem {
@@ -35,9 +35,9 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         splits_into: Vec::<usize>::new(),
         window: w,
         x: 0,
-        y: status_bar_offset,
+        y: state.bar_width,
         width: state.scr.width_in_pixels() as u32,
-        height: state.scr.height_in_pixels() as u32 - status_bar_offset as u32,
+        height: state.scr.height_in_pixels() as u32 - state.bar_width as u32,
         split_depth: 0,
     };
 
@@ -55,28 +55,24 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         win_item.split_depth = state.item_list[parent].split_depth + 1;
         state.item_list[parent].split_depth += 1;
 
-        // if new window is within split depth limits, proceed with size manipulation.
-        // otherwise it's pointless
-        if win_item.split_depth <= max_split_depth {
-            if state.item_list[parent].width > state.item_list[parent].height {
-                // vertical split
-                win_item.x = state.item_list[parent].x +
-                    (state.item_list[parent].width as i32 / 2);
-                win_item.y = state.item_list[parent].y;
-                win_item.width = state.item_list[parent].width / 2;
-                win_item.height = state.item_list[parent].height;
+        if state.item_list[parent].width > state.item_list[parent].height {
+            // vertical split
+            win_item.x = state.item_list[parent].x +
+                (state.item_list[parent].width as i32 / 2);
+            win_item.y = state.item_list[parent].y;
+            win_item.width = state.item_list[parent].width / 2;
+            win_item.height = state.item_list[parent].height;
 
-                state.item_list[parent].width = win_item.width;
-            } else {
-                // horizontal split
-                win_item.x = state.item_list[parent].x;
-                win_item.y = state.item_list[parent].y +
-                    state.item_list[parent].height as i32 / 2;
-                win_item.width = state.item_list[parent].width;
-                win_item.height = state.item_list[parent].height / 2;
+            state.item_list[parent].width = win_item.width;
+        } else {
+            // horizontal split
+            win_item.x = state.item_list[parent].x;
+            win_item.y = state.item_list[parent].y +
+                state.item_list[parent].height as i32 / 2;
+            win_item.width = state.item_list[parent].width;
+            win_item.height = state.item_list[parent].height / 2;
 
-                state.item_list[parent].height = win_item.height;
-            }
+            state.item_list[parent].height = win_item.height;
         }
     }
 
@@ -198,11 +194,13 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
     match opt {
         "up" => {
             if reply.y() == state.item_list[index].y as i16 {
-                state.item_list[index].y = 0;
+                state.item_list[index].y = state.bar_width;
                 state.item_list[index].height = scr_height;
                 vals = [
-                    x::ConfigWindow::Y(0),
-                    x::ConfigWindow::Height(scr_height - state.border*2),
+                    x::ConfigWindow::Y(state.bar_width),
+                    x::ConfigWindow::Height(
+                        scr_height - state.bar_width as u32 - state.border*2
+                    ),
                 ];
             }
         }
@@ -219,7 +217,8 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
         "down" => {
             if reply.height() == (state.item_list[index].height - (state.border*2)) as u16 {
                 state.item_list[index].height =
-                    (state.scr.height_in_pixels() - reply.y() as u16) as u32 - 4;
+                    (state.scr.height_in_pixels() - reply.y() as u16) as u32 -
+                        state.border*2;
                 vals = [
                     x::ConfigWindow::Y(state.item_list[index].y),
                     x::ConfigWindow::Height(state.item_list[index].height),
@@ -229,7 +228,8 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
         "right" => {
             if reply.width() == state.item_list[index].width as u16 {
                 state.item_list[index].width =
-                    (state.scr.width_in_pixels() - reply.x() as u16) as u32 - 4;
+                    (state.scr.width_in_pixels() - reply.x() as u16) as u32 -
+                        state.border*2;
                 vals = [
                     x::ConfigWindow::X(state.item_list[index].x),
                     x::ConfigWindow::Width(state.item_list[index].width),
@@ -260,6 +260,7 @@ fn main() -> xcb::Result<()> {
         curr_win: Vec::<Window>::new(),
         item_list: Vec::<WindowItem>::new(),
         border: 2,
+        bar_width: 13,
     };
 
     let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
