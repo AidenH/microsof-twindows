@@ -197,20 +197,20 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
 }
 
 fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
+    // get window's current dimensions
     let cookie = state.con.send_request(&x::GetGeometry {
         drawable: x::Drawable::Window(state.curr_win[0]),
     });
-
     let reply = state.con.wait_for_reply(cookie)?;
 
+    // get index of current window in item_list
     let index = state.item_list
         .iter()
         .position(|x| x.window == state.curr_win[0])
         .unwrap();
 
     // init with garbage value because it will be overwritten
-    let mut vals: [x::ConfigWindow; 2] =
-        [x::ConfigWindow::X(0), x::ConfigWindow::X(0)];
+    let mut vals: Box<[x::ConfigWindow]> = Box::new([]);
     let scr_width = state.scr.width_in_pixels() as u32;
     let scr_height = state.scr.height_in_pixels() as u32;
 
@@ -219,22 +219,22 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
             if reply.y() == state.item_list[index].y as i16 {
                 state.item_list[index].y = state.bar_width;
                 state.item_list[index].height = scr_height;
-                vals = [
+                vals = Box::new([
                     x::ConfigWindow::Y(state.bar_width),
                     x::ConfigWindow::Height(
                         scr_height - state.bar_width as u32 - state.border*2
                     ),
-                ];
+                ]);
             }
         }
         "left" => {
             if reply.x() == state.item_list[index].x as i16 {
                 state.item_list[index].x = 0;
                 state.item_list[index].width = scr_width;
-                vals = [
+                vals = Box::new([
                     x::ConfigWindow::X(0),
                     x::ConfigWindow::Width(scr_width - state.border*2),
-                ];
+                ]);
             }
         }
         "down" => {
@@ -242,10 +242,10 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
                 state.item_list[index].height =
                     (state.scr.height_in_pixels() - reply.y() as u16) as u32 -
                         state.border*2;
-                vals = [
+                vals = Box::new([
                     x::ConfigWindow::Y(state.item_list[index].y),
                     x::ConfigWindow::Height(state.item_list[index].height),
-                ];
+                ]);
             }
         }
         "right" => {
@@ -253,13 +253,43 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
                 state.item_list[index].width =
                     (state.scr.width_in_pixels() - reply.x() as u16) as u32 -
                         state.border*2;
-                vals = [
+                vals = Box::new([
                     x::ConfigWindow::X(state.item_list[index].x),
                     x::ConfigWindow::Width(state.item_list[index].width),
-                ];
+                ]);
+            }
+        }
+        "reset" => {
+            let revert = state.item_list[index].reverts.pop();
+            let item = &mut state.item_list[index];
+
+            match revert {
+                Some(r) => {
+                    item.x = r.x;
+                    item.y = r.y;
+                    item.width = r.width;
+                    item.height = r.height;
+
+                    vals = Box::new([
+                        x::ConfigWindow::X(r.x),
+                        x::ConfigWindow::Y(r.y),
+                        x::ConfigWindow::Width(r.width),
+                        x::ConfigWindow::Height(r.height),
+                    ]);
+                }
+                None => { println!("no more possible reversions for that window") }
             }
         }
         _ => {}
+    }
+
+    if opt != "reset" {
+        state.item_list[index].reverts.push(GeomRevert {
+            x: reply.x() as i32,
+            y: reply.y() as i32,
+            width: reply.width() as u32,
+            height: reply.height() as u32,
+        });
     }
 
     let cookie = state.con.send_request_checked(&x::ConfigureWindow {
@@ -330,22 +360,29 @@ fn main() -> xcb::Result<()> {
                     if !state.curr_win.is_empty() && !state.item_list.is_empty() {
                         state = destroy_win(state).unwrap();
                     }
-                } else if e.detail() == 111 &&
-                    e.state() == x::KeyButMask::MOD1 {
+                }
+                if !state.curr_win.is_empty() {
+                    if e.detail() == 111 &&
+                        e.state() == x::KeyButMask::MOD1 {
 
-                    state = nudge(state, "up")?;
-                } else if e.detail() == 113 &&
-                    e.state() == x::KeyButMask::MOD1 {
+                        state = nudge(state, "up")?;
+                    } else if e.detail() == 113 &&
+                        e.state() == x::KeyButMask::MOD1 {
 
-                    state = nudge(state, "left")?;
-                } else if e.detail() == 116 &&
-                    e.state() == x::KeyButMask::MOD1 {
+                        state = nudge(state, "left")?;
+                    } else if e.detail() == 116 &&
+                        e.state() == x::KeyButMask::MOD1 {
 
-                    state = nudge(state, "down")?;
-                } else if e.detail() == 114 &&
-                    e.state() == x::KeyButMask::MOD1 {
+                        state = nudge(state, "down")?;
+                    } else if e.detail() == 114 &&
+                        e.state() == x::KeyButMask::MOD1 {
 
-                    state = nudge(state, "right")?;
+                        state = nudge(state, "right")?;
+                    } else if e.detail() == 27 &&
+                        e.state() == x::KeyButMask::MOD1 {
+
+                        state = nudge(state, "reset")?;
+                    }
                 }
             }
 
