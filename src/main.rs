@@ -156,6 +156,14 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
             });
 
             con.check_request(cookie)?;
+
+            let cookie = con.send_request_checked(&x::SetInputFocus {
+                revert_to: x::InputFocus::PointerRoot,
+                focus: win,
+                time: x::CURRENT_TIME,
+            });
+
+            con.check_request(cookie)?;
         }
         // defocus
         false => {
@@ -226,7 +234,7 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
             }
         }
         "right" => {
-            if reply.width() == state.item_list[index].width as u16 {
+            if reply.width() == (state.item_list[index].width - (state.border*2)) as u16 {
                 state.item_list[index].width =
                     (state.scr.width_in_pixels() - reply.x() as u16) as u32 -
                         state.border*2;
