@@ -111,6 +111,17 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
 
         state.con.check_request(cookie)?;
 
+        let cookie = state.con.send_request_checked(&x::GrabKey {
+            owner_events: true,
+            grab_window: i.window,
+            modifiers: x::ModMask::N1 | x::ModMask::SHIFT,
+            key: x::GRAB_ANY,
+            pointer_mode: x::GrabMode::Async,
+            keyboard_mode: x::GrabMode::Async,
+        });
+
+        state.con.check_request(cookie)?;
+
         state.con.send_request(&x::MapWindow {
             window: i.window,
         });
