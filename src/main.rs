@@ -179,6 +179,15 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
             });
 
             con.check_request(cookie)?;
+
+            let cookie = con.send_request_checked(&x::ConfigureWindow {
+                window: win,
+                value_list: &[
+                    x::ConfigWindow::StackMode(x::StackMode::Above),
+                ]
+            });
+
+            con.check_request(cookie)?;
         }
         // defocus
         false => {
