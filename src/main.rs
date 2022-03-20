@@ -21,7 +21,16 @@ struct WindowItem {
     y: i32,
     width: u32,
     height: u32,
+    reverts: Vec<GeomRevert>,
     split_depth: i32,
+}
+
+#[derive(Debug)]
+struct GeomRevert {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
 }
 
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
@@ -38,6 +47,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         y: state.bar_width,
         width: state.scr.width_in_pixels() as u32,
         height: state.scr.height_in_pixels() as u32 - state.bar_width as u32,
+        reverts: Vec::<GeomRevert>::new(),
         split_depth: 0,
     };
 
