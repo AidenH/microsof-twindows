@@ -292,6 +292,14 @@ fn main() -> xcb::Result<()> {
 
     state.con.check_request(cookie)?;
 
+    state.con.send_request(&x::ChangeProperty {
+        mode: x::PropMode::Replace,
+        window: state.scr.root(),
+        property: x::ATOM_WM_NAME,
+        r#type: x::ATOM_STRING,
+        data: b"microsof-twindows",
+    });
+
     loop {
         match state.con.wait_for_event()? {
             xcb::Event::X(x::Event::KeyPress(e)) => {
