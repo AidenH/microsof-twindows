@@ -76,7 +76,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         }
     }
 
-    // only add to window rendering list if within split depth limits
+    // kept for the option of window split limits
     /*if win_item.split_depth <= max_split_depth {
         state.item_list.push(win_item);
     }*/
@@ -143,12 +143,6 @@ fn destroy_win(mut state: State) -> xcb::Result<State> {
     });
 
     state.con.check_request(cookie)?;
-
-    // ideally for reparenting-based window swallow:
-    //
-    // for child in this.splits_into
-        //child.parent = this.parent
-        //this.child = child.parent
 
     state.item_list.remove(this_window);
 
