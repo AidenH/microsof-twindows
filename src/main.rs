@@ -371,19 +371,19 @@ fn main() -> xcb::Result<()> {
                     }
                 }
                 if !state.curr_win.is_empty() {
-                    if e.detail() == 111 &&
+                    if e.detail() == 45 &&
                         e.state() == x::KeyButMask::MOD1 {
 
                         state = nudge(state, "up")?;
-                    } else if e.detail() == 113 &&
+                    } else if e.detail() == 43 &&
                         e.state() == x::KeyButMask::MOD1 {
 
                         state = nudge(state, "left")?;
-                    } else if e.detail() == 116 &&
+                    } else if e.detail() == 44 &&
                         e.state() == x::KeyButMask::MOD1 {
 
                         state = nudge(state, "down")?;
-                    } else if e.detail() == 114 &&
+                    } else if e.detail() == 46 &&
                         e.state() == x::KeyButMask::MOD1 {
 
                         state = nudge(state, "right")?;
