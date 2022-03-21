@@ -247,10 +247,11 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
             }
         }
         "down" => {
+            println!("{:?}, {:?}", reply.height(), state.item_list[index].height);
             if reply.height() == (state.item_list[index].height - (state.border*2)) as u16 {
                 state.item_list[index].height =
-                    (state.scr.height_in_pixels() - reply.y() as u16) as u32 -
-                        state.border*2;
+                    scr_height - reply.y() as u32;
+                println!("height {:?}", state.item_list[index].height);
                 vals = Box::new([
                     x::ConfigWindow::Y(state.item_list[index].y),
                     x::ConfigWindow::Height(state.item_list[index].height),
@@ -260,7 +261,7 @@ fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
         "right" => {
             if reply.width() == (state.item_list[index].width - (state.border*2)) as u16 {
                 state.item_list[index].width =
-                    (state.scr.width_in_pixels() - reply.x() as u16) as u32 -
+                    (scr_width - reply.x() as u32) -
                         state.border*2;
                 vals = Box::new([
                     x::ConfigWindow::X(state.item_list[index].x),
