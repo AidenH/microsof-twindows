@@ -2,6 +2,7 @@ use std::process::Command;
 
 use xcb::{x::{self, Window}, x::{EventMask, KeyButMask}};
 
+// important program variables
 struct State<'a> {
     con: &'a xcb::Connection,
     scr: &'a x::Screen,
@@ -213,6 +214,8 @@ impl<'a> State<'a> {
         Ok(())
     }
 
+    // nudge pushes smaller windows to edges of screen,
+    // uses vim bindings hjkl for what direction in which to nudge
     fn nudge(&mut self, opt: &[&str]) -> xcb::Result<()> {
         if !self.curr_win.is_empty() {
             // get window's current dimensions
@@ -326,6 +329,7 @@ impl<'a> State<'a> {
         Ok(())
     }
 
+    // spawn new system process
     fn spawn(&mut self, in_args: &[&str]) -> xcb::Result<()> {
         let (command, args) = in_args.split_at(1);
 
@@ -352,6 +356,9 @@ fn main() -> xcb::Result<()> {
         bar_width: 13,
     };
 
+    // --------
+    // KEYBINDS
+    // --------
     let keys = vec![
         Key{key: 24, modf:Some(KeyButMask::MOD1 | KeyButMask::SHIFT),
             func: State::destroy_win, args: &[""]},
@@ -366,6 +373,7 @@ fn main() -> xcb::Result<()> {
         Key{key: 27, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["reset"]},
     ];
 
+    // set root attributes
     let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
         window: state.scr.root(),
         value_list: &[
@@ -376,6 +384,7 @@ fn main() -> xcb::Result<()> {
 
     state.con.check_request(cookie)?;
 
+    // set wm name
     state.con.send_request(&x::ChangeProperty {
         mode: x::PropMode::Replace,
         window: state.scr.root(),
@@ -384,6 +393,7 @@ fn main() -> xcb::Result<()> {
         data: b"microsof-twindows",
     });
 
+    // main loop
     loop {
         match state.con.wait_for_event()? {
             // keypress
