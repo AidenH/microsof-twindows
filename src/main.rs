@@ -2,7 +2,6 @@ use std::process::Command;
 
 use xcb::{x::{self, Window}, x::{EventMask, KeyButMask}};
 
-// important program variables
 struct State<'a> {
     con: &'a xcb::Connection,
     scr: &'a x::Screen,
@@ -36,7 +35,7 @@ struct GeomRevert {
 
 struct Key<'a> {
     key: u8,
-    modf: Option<x::KeyButMask>,
+    modf: x::KeyButMask,
     func: fn(&mut State<'a>, &[&str]) -> xcb::Result<()>,
     args: &'static [&'static str],
 }
@@ -360,17 +359,21 @@ fn main() -> xcb::Result<()> {
     // KEYBINDS
     // --------
     let keys = vec![
-        Key{key: 24, modf:Some(KeyButMask::MOD1 | KeyButMask::SHIFT),
+        Key{key: 24, modf: KeyButMask::MOD1 | KeyButMask::SHIFT,
             func: State::destroy_win, args: &[""]},
-        Key{key: 36, modf:Some(KeyButMask::MOD1), func: State::spawn,
+        Key{key: 36, modf: KeyButMask::MOD1, func: State::spawn,
             args: &["zsh", "-c", "st"]},
-        Key{key: 40, modf:Some(KeyButMask::MOD1), func: State::spawn,
+        Key{key: 40, modf: KeyButMask::MOD1, func: State::spawn,
             args: &["zsh", "-c", "dmenu_run"]},
-        Key{key: 45, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["up"]},
-        Key{key: 43, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["left"]},
-        Key{key: 44, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["down"]},
-        Key{key: 46, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["right"]},
-        Key{key: 27, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["reset"]},
+        Key{key: 56, modf: KeyButMask::MOD1, func: State::spawn,
+            args: &["zsh", "-c", "qutebrowser"]},
+        Key{key: 107, modf: KeyButMask::empty(), func: State::spawn,
+            args: &["zsh", "-c", "scrot -z ~/Pictures/screenshots/"]},
+        Key{key: 45, modf: KeyButMask::MOD1, func: State::nudge, args: &["up"]},
+        Key{key: 43, modf: KeyButMask::MOD1, func: State::nudge, args: &["left"]},
+        Key{key: 44, modf: KeyButMask::MOD1, func: State::nudge, args: &["down"]},
+        Key{key: 46, modf: KeyButMask::MOD1, func: State::nudge, args: &["right"]},
+        Key{key: 27, modf: KeyButMask::MOD1, func: State::nudge, args: &["reset"]},
     ];
 
     // set root attributes
@@ -406,7 +409,7 @@ fn main() -> xcb::Result<()> {
                 }
 
                 for i in &keys {
-                    if i.key == e.detail() && i.modf.unwrap() == e.state() {
+                    if i.key == e.detail() && i.modf == e.state() {
                         (i.func)(&mut state, i.args)?;
                     }
                 }
