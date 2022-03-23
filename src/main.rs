@@ -197,18 +197,21 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
 
 impl<'a> State<'a> {
     fn destroy_win(&mut self, _args: &[&str]) -> xcb::Result<()> {
-        let this_window = self.item_list
-            .iter()
-            .position(|x| x.window == self.curr_win[0])
-            .unwrap();
+        // only destroy if there's a focused window
+        if !self.curr_win.is_empty() {
+            let this_window = self.item_list
+                .iter()
+                .position(|x| x.window == self.curr_win[0])
+                .unwrap();
 
-        let cookie = self.con.send_request_checked(&x::DestroyWindow {
-            window: self.curr_win[0],
-        });
+            let cookie = self.con.send_request_checked(&x::DestroyWindow {
+                window: self.curr_win[0],
+            });
 
-        self.con.check_request(cookie)?;
+            self.con.check_request(cookie)?;
 
-        self.item_list.remove(this_window);
+            self.item_list.remove(this_window);
+        }
 
         Ok(())
     }
