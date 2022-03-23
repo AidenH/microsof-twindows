@@ -355,6 +355,8 @@ fn main() -> xcb::Result<()> {
         bar_width: 13,
     };
 
+    let none = KeyButMask::empty();
+
     // --------
     // KEYBINDS
     // --------
@@ -367,8 +369,14 @@ fn main() -> xcb::Result<()> {
             args: &["zsh", "-c", "dmenu_run"]},
         Key{key: 56, modf: KeyButMask::MOD1, func: State::spawn,
             args: &["zsh", "-c", "qutebrowser"]},
-        Key{key: 107, modf: KeyButMask::empty(), func: State::spawn,
+        Key{key: 107, modf: none, func: State::spawn,
             args: &["zsh", "-c", "scrot -z ~/Pictures/screenshots/"]},
+        Key{key: 121, modf: none, func: State::spawn,
+            args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -m"]},
+        Key{key: 122, modf: none, func: State::spawn,
+            args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -d"]},
+        Key{key: 123, modf: none, func: State::spawn,
+            args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -u"]},
         Key{key: 45, modf: KeyButMask::MOD1, func: State::nudge, args: &["up"]},
         Key{key: 43, modf: KeyButMask::MOD1, func: State::nudge, args: &["left"]},
         Key{key: 44, modf: KeyButMask::MOD1, func: State::nudge, args: &["down"]},
