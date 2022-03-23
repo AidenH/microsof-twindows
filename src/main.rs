@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use xcb::{x::{self, Window}, x::EventMask};
+use xcb::{x::{self, Window}, x::{EventMask, KeyButMask}};
 
 struct State<'a> {
     con: &'a xcb::Connection,
@@ -31,6 +31,13 @@ struct GeomRevert {
     y: i32,
     width: u32,
     height: u32,
+}
+
+struct Key<'a> {
+    key: u8,
+    modf: Option<x::KeyButMask>,
+    func: fn(&mut State<'a>, &[&str]) -> xcb::Result<()>,
+    args: &'static [&'static str],
 }
 
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
@@ -142,23 +149,6 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
     Ok(state)
 }
 
-fn destroy_win(mut state: State) -> xcb::Result<State> {
-    let this_window = state.item_list
-        .iter()
-        .position(|x| x.window == state.curr_win[0])
-        .unwrap();
-
-    let cookie = state.con.send_request_checked(&x::DestroyWindow {
-        window: state.curr_win[0],
-    });
-
-    state.con.check_request(cookie)?;
-
-    state.item_list.remove(this_window);
-
-    Ok(state)
-}
-
 fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
     match opt {
         // focus
@@ -205,111 +195,147 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
     Ok(())
 }
 
-fn nudge<'a>(mut state: State<'a>, opt: &str) -> xcb::Result<State<'a>> {
-    // get window's current dimensions
-    let cookie = state.con.send_request(&x::GetGeometry {
-        drawable: x::Drawable::Window(state.curr_win[0]),
-    });
-    let reply = state.con.wait_for_reply(cookie)?;
+impl<'a> State<'a> {
+    fn destroy_win(&mut self, _args: &[&str]) -> xcb::Result<()> {
+        let this_window = self.item_list
+            .iter()
+            .position(|x| x.window == self.curr_win[0])
+            .unwrap();
 
-    // get index of current window in item_list
-    let index = state.item_list
-        .iter()
-        .position(|x| x.window == state.curr_win[0])
-        .unwrap();
-
-    // init with garbage value because it will be overwritten
-    let mut vals: Box<[x::ConfigWindow]> = Box::new([]);
-    let scr_width = state.scr.width_in_pixels() as u32;
-    let scr_height = state.scr.height_in_pixels() as u32;
-
-    match opt {
-        "up" => {
-            if reply.y() == state.item_list[index].y as i16 {
-                state.item_list[index].y = state.bar_width;
-                state.item_list[index].height = scr_height;
-                vals = Box::new([
-                    x::ConfigWindow::Y(state.bar_width),
-                    x::ConfigWindow::Height(
-                        scr_height - state.bar_width as u32 - state.border*2
-                    ),
-                ]);
-            }
-        }
-        "left" => {
-            if reply.x() == state.item_list[index].x as i16 {
-                state.item_list[index].x = 0;
-                state.item_list[index].width = scr_width;
-                vals = Box::new([
-                    x::ConfigWindow::X(0),
-                    x::ConfigWindow::Width(scr_width - state.border*2),
-                ]);
-            }
-        }
-        "down" => {
-            println!("{:?}, {:?}", reply.height(), state.item_list[index].height);
-            if reply.height() == (state.item_list[index].height - (state.border*2)) as u16 {
-                state.item_list[index].height =
-                    scr_height - reply.y() as u32;
-                println!("height {:?}", state.item_list[index].height);
-                vals = Box::new([
-                    x::ConfigWindow::Y(state.item_list[index].y),
-                    x::ConfigWindow::Height(state.item_list[index].height),
-                ]);
-            }
-        }
-        "right" => {
-            if reply.width() == (state.item_list[index].width - (state.border*2)) as u16 {
-                state.item_list[index].width =
-                    (scr_width - reply.x() as u32) -
-                        state.border*2;
-                vals = Box::new([
-                    x::ConfigWindow::X(state.item_list[index].x),
-                    x::ConfigWindow::Width(state.item_list[index].width),
-                ]);
-            }
-        }
-        "reset" => {
-            let revert = state.item_list[index].reverts.pop();
-            let item = &mut state.item_list[index];
-
-            match revert {
-                Some(r) => {
-                    item.x = r.x;
-                    item.y = r.y;
-                    item.width = r.width;
-                    item.height = r.height;
-
-                    vals = Box::new([
-                        x::ConfigWindow::X(r.x),
-                        x::ConfigWindow::Y(r.y),
-                        x::ConfigWindow::Width(r.width),
-                        x::ConfigWindow::Height(r.height),
-                    ]);
-                }
-                None => { println!("no more possible reversions for that window") }
-            }
-        }
-        _ => {}
-    }
-
-    if opt != "reset" {
-        state.item_list[index].reverts.push(GeomRevert {
-            x: reply.x() as i32,
-            y: reply.y() as i32,
-            width: reply.width() as u32,
-            height: reply.height() as u32,
+        let cookie = self.con.send_request_checked(&x::DestroyWindow {
+            window: self.curr_win[0],
         });
+
+        self.con.check_request(cookie)?;
+
+        self.item_list.remove(this_window);
+
+        Ok(())
     }
 
-    let cookie = state.con.send_request_checked(&x::ConfigureWindow {
-        window: state.curr_win[0],
-        value_list: &vals,
-    });
+    fn nudge(&mut self, opt: &[&str]) -> xcb::Result<()> {
+        if !self.curr_win.is_empty() {
+            // get window's current dimensions
+            let cookie = self.con.send_request(&x::GetGeometry {
+                drawable: x::Drawable::Window(self.curr_win[0]),
+            });
+            let reply = self.con.wait_for_reply(cookie)?;
 
-    state.con.check_request(cookie)?;
+            // get index of current window in item_list
+            let index = self.item_list
+                .iter()
+                .position(|x| x.window == self.curr_win[0])
+                .unwrap();
 
-    Ok(state)
+            // init with garbage value because it will be overwritten
+            let mut vals: Box<[x::ConfigWindow]> = Box::new([]);
+            let scr_width = self.scr.width_in_pixels() as u32;
+            let scr_height = self.scr.height_in_pixels() as u32;
+
+            match opt[0] {
+                "up" => {
+                    if reply.y() == self.item_list[index].y as i16 {
+                        self.item_list[index].y = self.bar_width;
+                        self.item_list[index].height = scr_height;
+                        vals = Box::new([
+                            x::ConfigWindow::Y(self.bar_width),
+                            x::ConfigWindow::Height(
+                                scr_height - self.bar_width as u32 - self.border*2
+                            ),
+                        ]);
+                    }
+                }
+                "left" => {
+                    if reply.x() == self.item_list[index].x as i16 {
+                        self.item_list[index].x = 0;
+                        self.item_list[index].width = scr_width;
+                        vals = Box::new([
+                            x::ConfigWindow::X(0),
+                            x::ConfigWindow::Width(scr_width - self.border*2),
+                        ]);
+                    }
+                }
+                "down" => {
+                    println!("{:?}, {:?}", reply.height(), self.item_list[index].height);
+                    if reply.height() ==
+                        (self.item_list[index].height - (self.border*2)) as u16 {
+
+                        self.item_list[index].height =
+                            scr_height - reply.y() as u32;
+                        println!("height {:?}", self.item_list[index].height);
+                        vals = Box::new([
+                            x::ConfigWindow::Y(self.item_list[index].y),
+                            x::ConfigWindow::Height(self.item_list[index].height),
+                        ]);
+                    }
+                }
+                "right" => {
+                    if reply.width() ==
+                        (self.item_list[index].width - (self.border*2)) as u16 {
+
+                        self.item_list[index].width =
+                            (scr_width - reply.x() as u32) -
+                                self.border*2;
+                        vals = Box::new([
+                            x::ConfigWindow::X(self.item_list[index].x),
+                            x::ConfigWindow::Width(self.item_list[index].width),
+                        ]);
+                    }
+                }
+                "reset" => {
+                    let revert = self.item_list[index].reverts.pop();
+                    let item = &mut self.item_list[index];
+
+                    match revert {
+                        Some(r) => {
+                            item.x = r.x;
+                            item.y = r.y;
+                            item.width = r.width;
+                            item.height = r.height;
+
+                            vals = Box::new([
+                                x::ConfigWindow::X(r.x),
+                                x::ConfigWindow::Y(r.y),
+                                x::ConfigWindow::Width(r.width),
+                                x::ConfigWindow::Height(r.height),
+                            ]);
+                        }
+                        None => { println!("no more possible reversions for that window") }
+                    }
+                }
+                _ => {}
+            }
+
+            if opt[0] != "reset" {
+                self.item_list[index].reverts.push(GeomRevert {
+                    x: reply.x() as i32,
+                    y: reply.y() as i32,
+                    width: reply.width() as u32,
+                    height: reply.height() as u32,
+                });
+            }
+
+            let cookie = self.con.send_request_checked(&x::ConfigureWindow {
+                window: self.curr_win[0],
+                value_list: &vals,
+            });
+
+            self.con.check_request(cookie)?;
+        }
+
+        Ok(())
+    }
+
+    fn spawn(&mut self, in_args: &[&str]) -> xcb::Result<()> {
+        let (command, args) = in_args.split_at(1);
+
+        Command::new(command[0])
+            .args(args)
+            .spawn()
+            .expect("failed to spawn");
+
+        Ok(())
+    }
 }
 
 fn main() -> xcb::Result<()> {
@@ -325,6 +351,20 @@ fn main() -> xcb::Result<()> {
         border: 2,
         bar_width: 13,
     };
+
+    let keys = vec![
+        Key{key: 24, modf:Some(KeyButMask::MOD1 | KeyButMask::SHIFT),
+            func: State::destroy_win, args: &[""]},
+        Key{key: 36, modf:Some(KeyButMask::MOD1), func: State::spawn,
+            args: &["zsh", "-c", "st"]},
+        Key{key: 40, modf:Some(KeyButMask::MOD1), func: State::spawn,
+            args: &["zsh", "-c", "dmenu_run"]},
+        Key{key: 45, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["up"]},
+        Key{key: 43, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["left"]},
+        Key{key: 44, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["down"]},
+        Key{key: 46, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["right"]},
+        Key{key: 27, modf:Some(KeyButMask::MOD1), func: State::nudge, args: &["reset"]},
+    ];
 
     let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
         window: state.scr.root(),
@@ -346,56 +386,23 @@ fn main() -> xcb::Result<()> {
 
     loop {
         match state.con.wait_for_event()? {
+            // keypress
             xcb::Event::X(x::Event::KeyPress(e)) => {
 
                 if e.detail() == 26 &&
-                    e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // ct-sh-'e'
+                    e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT {
 
                     break Ok(());
-                } else if e.detail() == 36 && e.state() == x::KeyButMask::MOD1 { // alt ent
-                    Command::new("zsh")
-                        .arg("-c")
-                        .arg("/usr/bin/st")
-                        .spawn()
-                        .expect("failed to load terminal");
-                } else if e.detail() == 40 && e.state() == x::KeyButMask::MOD1 { // alt 'd'
-                    Command::new("zsh")
-                        .arg("-c")
-                        .arg("/usr/bin/dmenu_run")
-                        .spawn()
-                        .expect("failed to load dmenu");
-                } else if e.detail() == 24 &&
-                    e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT { // alt 'q'
-
-                    if !state.curr_win.is_empty() && !state.item_list.is_empty() {
-                        state = destroy_win(state).unwrap();
-                    }
                 }
-                if !state.curr_win.is_empty() {
-                    if e.detail() == 45 &&
-                        e.state() == x::KeyButMask::MOD1 {
 
-                        state = nudge(state, "up")?;
-                    } else if e.detail() == 43 &&
-                        e.state() == x::KeyButMask::MOD1 {
-
-                        state = nudge(state, "left")?;
-                    } else if e.detail() == 44 &&
-                        e.state() == x::KeyButMask::MOD1 {
-
-                        state = nudge(state, "down")?;
-                    } else if e.detail() == 46 &&
-                        e.state() == x::KeyButMask::MOD1 {
-
-                        state = nudge(state, "right")?;
-                    } else if e.detail() == 27 &&
-                        e.state() == x::KeyButMask::MOD1 {
-
-                        state = nudge(state, "reset")?;
+                for i in &keys {
+                    if i.key == e.detail() && i.modf.unwrap() == e.state() {
+                        (i.func)(&mut state, i.args)?;
                     }
                 }
             }
 
+            // unmap
             xcb::Event::X(x::Event::UnmapNotify(_e)) => {
                 let remove_win = state.item_list
                     .iter()
@@ -408,11 +415,13 @@ fn main() -> xcb::Result<()> {
                 }
             }
 
+            // enter
             xcb::Event::X(x::Event::EnterNotify(_e)) => {
                 state.curr_win.push(_e.event());
                 focus(true, &state.con, _e.event())?;
             }
 
+            // leave
             xcb::Event::X(x::Event::LeaveNotify(_e)) => {
                 state.curr_win.pop();
 
@@ -422,6 +431,7 @@ fn main() -> xcb::Result<()> {
                 }
             }
 
+            // map
             xcb::Event::X(x::Event::MapRequest(_e)) => {
                 state = add_window(state, _e.window())?;
             }
