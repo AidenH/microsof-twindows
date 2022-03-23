@@ -370,6 +370,8 @@ fn main() -> xcb::Result<()> {
             args: &["zsh", "-c", "st"]},
         Key{key: 40, modf: KeyButMask::MOD1, func: State::spawn,
             args: &["zsh", "-c", "dmenu_run"]},
+        Key{key: 53, modf: KeyButMask::MOD1, func: State::spawn,
+            args: &["zsh", "-c", "i3lock -k -B 5 --ring-width 3 --ind-pos=\"80:700\" --radius 30 --time-pos=\"675:400\" --date-str=\"%a %b %d, %Y\" --time-color=ffffff --date-color=ffffff --verif-size=10 --verif-text=\"verifying\" --wrong-size=10 --wrong-text=\"wrong\" --verif-color=ffffff --wrong-color=ffffff"]},
         Key{key: 56, modf: KeyButMask::MOD1, func: State::spawn,
             args: &["zsh", "-c", "qutebrowser"]},
         Key{key: 107, modf: none, func: State::spawn,
