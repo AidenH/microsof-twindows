@@ -396,12 +396,14 @@ fn main() -> xcb::Result<()> {
         data: b"microsof-twindows",
     });
 
+    // autostart script
+    state.spawn(&["zsh", "-c", "~/.microsof-twindows/autostart.sh"])?;
+
     // main loop
     loop {
         match state.con.wait_for_event()? {
             // keypress
             xcb::Event::X(x::Event::KeyPress(e)) => {
-
                 if e.detail() == 26 &&
                     e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT {
 
