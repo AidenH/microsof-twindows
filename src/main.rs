@@ -359,21 +359,20 @@ fn main() -> xcb::Result<()> {
     };
 
     let none = KeyButMask::empty();
+    let alt = KeyButMask::MOD1;
+    let alt_shift = KeyButMask::MOD1 | KeyButMask::SHIFT;
+
+    let i3lock = &["zsh", "-c", "i3lock -k -B 5 --ring-width 3 --ind-pos=\"80:700\" --radius 30 --time-pos=\"675:400\" --date-str=\"%a %b %d, %Y\" --time-color=ffffff --date-color=ffffff --verif-size=10 --verif-text=\"verifying\" --wrong-size=10 --wrong-text=\"wrong\" --verif-color=ffffff --wrong-color=ffffff"];
 
     // --------
     // KEYBINDS
     // --------
     let keys = vec![
-        Key{key: 24, modf: KeyButMask::MOD1 | KeyButMask::SHIFT,
-            func: State::destroy_win, args: &[""]},
-        Key{key: 36, modf: KeyButMask::MOD1, func: State::spawn,
-            args: &["zsh", "-c", "st"]},
-        Key{key: 40, modf: KeyButMask::MOD1, func: State::spawn,
-            args: &["zsh", "-c", "dmenu_run"]},
-        Key{key: 53, modf: KeyButMask::MOD1, func: State::spawn,
-            args: &["zsh", "-c", "i3lock -k -B 5 --ring-width 3 --ind-pos=\"80:700\" --radius 30 --time-pos=\"675:400\" --date-str=\"%a %b %d, %Y\" --time-color=ffffff --date-color=ffffff --verif-size=10 --verif-text=\"verifying\" --wrong-size=10 --wrong-text=\"wrong\" --verif-color=ffffff --wrong-color=ffffff"]},
-        Key{key: 56, modf: KeyButMask::MOD1, func: State::spawn,
-            args: &["zsh", "-c", "qutebrowser"]},
+        Key{key: 24, modf: alt_shift, func: State::destroy_win, args: &[""]},
+        Key{key: 36, modf: alt, func: State::spawn, args: &["zsh", "-c", "st"]},
+        Key{key: 40, modf: alt, func: State::spawn, args: &["zsh", "-c", "dmenu_run"]},
+        Key{key: 53, modf: alt, func: State::spawn, args: i3lock},
+        Key{key: 56, modf: alt, func: State::spawn, args: &["zsh", "-c", "qutebrowser"]},
         Key{key: 107, modf: none, func: State::spawn,
             args: &["zsh", "-c", "scrot -z ~/Pictures/screenshots/"]},
         Key{key: 121, modf: none, func: State::spawn,
@@ -382,11 +381,11 @@ fn main() -> xcb::Result<()> {
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -d"]},
         Key{key: 123, modf: none, func: State::spawn,
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -u"]},
-        Key{key: 45, modf: KeyButMask::MOD1, func: State::nudge, args: &["up"]},
-        Key{key: 43, modf: KeyButMask::MOD1, func: State::nudge, args: &["left"]},
-        Key{key: 44, modf: KeyButMask::MOD1, func: State::nudge, args: &["down"]},
-        Key{key: 46, modf: KeyButMask::MOD1, func: State::nudge, args: &["right"]},
-        Key{key: 27, modf: KeyButMask::MOD1, func: State::nudge, args: &["reset"]},
+        Key{key: 45, modf: alt, func: State::nudge, args: &["up"]},
+        Key{key: 43, modf: alt, func: State::nudge, args: &["left"]},
+        Key{key: 44, modf: alt, func: State::nudge, args: &["down"]},
+        Key{key: 46, modf: alt, func: State::nudge, args: &["right"]},
+        Key{key: 27, modf: alt, func: State::nudge, args: &["reset"]},
     ];
 
     // set root attributes
@@ -418,7 +417,7 @@ fn main() -> xcb::Result<()> {
             // keypress
             xcb::Event::X(x::Event::KeyPress(e)) => {
                 if e.detail() == 26 &&
-                    e.state() == x::KeyButMask::MOD1 | x::KeyButMask::SHIFT {
+                    e.state() == alt_shift {
 
                     break Ok(());
                 }
