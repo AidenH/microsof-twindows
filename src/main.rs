@@ -5,7 +5,7 @@ use xcb::{x::{self, Window}, x::{EventMask, KeyButMask}};
 struct State<'a> {
     con: &'a xcb::Connection,
     scr: &'a x::Screen,
-    curr_win: Vec<Window>,
+    curr_win: Option<Window>,
     item_list: Vec<WindowItem>,
     border: u32,
     bar_width: i32,
@@ -59,10 +59,10 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
     };
 
     // if other windows open, modify sizes based on window new window will be split from
-    if !state.item_list.is_empty() && !state.curr_win.is_empty() {
+    if !state.item_list.is_empty() && state.curr_win.is_some() {
         let parent = state.item_list
             .iter()
-            .position(|x| x.window == state.curr_win[0] )
+            .position(|x| x.window == state.curr_win.unwrap() )
             .unwrap();
 
         win_item.splits_from.push(state.item_list[parent].id);
@@ -198,14 +198,14 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
 impl<'a> State<'a> {
     fn destroy_win(&mut self, _args: &[&str]) -> xcb::Result<()> {
         // only destroy if there's a focused window
-        if !self.curr_win.is_empty() {
+        if self.curr_win.is_some() {
             let this_window = self.item_list
                 .iter()
-                .position(|x| x.window == self.curr_win[0])
+                .position(|x| x.window == self.curr_win.unwrap())
                 .unwrap();
 
             let cookie = self.con.send_request_checked(&x::DestroyWindow {
-                window: self.curr_win[0],
+                window: self.curr_win.unwrap(),
             });
 
             self.con.check_request(cookie)?;
@@ -219,17 +219,17 @@ impl<'a> State<'a> {
     // nudge pushes smaller windows to edges of screen,
     // uses vim bindings hjkl for what direction in which to nudge
     fn nudge(&mut self, opt: &[&str]) -> xcb::Result<()> {
-        if !self.curr_win.is_empty() {
+        if self.curr_win.is_some() {
             // get window's current dimensions
             let cookie = self.con.send_request(&x::GetGeometry {
-                drawable: x::Drawable::Window(self.curr_win[0]),
+                drawable: x::Drawable::Window(self.curr_win.unwrap()),
             });
             let reply = self.con.wait_for_reply(cookie)?;
 
             // get index of current window in item_list
             let index = self.item_list
                 .iter()
-                .position(|x| x.window == self.curr_win[0])
+                .position(|x| x.window == self.curr_win.unwrap())
                 .unwrap();
 
             // init with garbage value because it will be overwritten
@@ -321,7 +321,7 @@ impl<'a> State<'a> {
             }
 
             let cookie = self.con.send_request_checked(&x::ConfigureWindow {
-                window: self.curr_win[0],
+                window: self.curr_win.unwrap(),
                 value_list: &vals,
             });
 
@@ -352,7 +352,7 @@ fn main() -> xcb::Result<()> {
     let mut state = State {
         con: &connection,
         scr: &screen,
-        curr_win: Vec::<Window>::new(),
+        curr_win: None,
         item_list: Vec::<WindowItem>::new(),
         border: 2,
         bar_width: 13,
@@ -444,13 +444,13 @@ fn main() -> xcb::Result<()> {
 
             // enter
             xcb::Event::X(x::Event::EnterNotify(_e)) => {
-                state.curr_win.push(_e.event());
+                state.curr_win = Some(_e.event());
                 focus(true, &state.con, _e.event())?;
             }
 
             // leave
             xcb::Event::X(x::Event::LeaveNotify(_e)) => {
-                state.curr_win.pop();
+                state.curr_win = None;
 
                 // if win_list contains _e's Window
                 if state.item_list.iter().any(|x| x.window == _e.event()) {
