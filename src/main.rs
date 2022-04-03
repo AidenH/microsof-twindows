@@ -400,13 +400,15 @@ fn main() -> xcb::Result<()> {
     state.con.check_request(cookie)?;
 
     // set wm name
-    state.con.send_request(&x::ChangeProperty {
+    let cookie = state.con.send_request_checked(&x::ChangeProperty {
         mode: x::PropMode::Replace,
         window: state.scr.root(),
         property: x::ATOM_WM_NAME,
         r#type: x::ATOM_STRING,
         data: b"microsof-twindows",
     });
+
+    state.con.check_request(cookie)?;
 
     // autostart script
     state.spawn(&["zsh", "-c", "~/.microsof-twindows/autostart.sh"])?;
