@@ -6,6 +6,7 @@ struct State<'a> {
     con: &'a xcb::Connection,
     scr: &'a x::Screen,
     curr_win: Option<Window>,
+    curr_workspace: i8,
     item_list: Vec<WindowItem>,
     border: u32,
     bar_width: i32,
@@ -23,6 +24,7 @@ struct WindowItem {
     height: u32,
     reverts: Vec<GeomRevert>,
     split_depth: i32,
+    workspace: i8,
 }
 
 #[derive(Debug)]
@@ -56,6 +58,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         height: state.scr.height_in_pixels() as u32 - state.bar_width as u32,
         reverts: Vec::<GeomRevert>::new(),
         split_depth: 0,
+        workspace: state.curr_workspace,
     };
 
     // if other windows open, modify sizes based on window new window will be split from
@@ -353,6 +356,7 @@ fn main() -> xcb::Result<()> {
         con: &connection,
         scr: &screen,
         curr_win: None,
+        curr_workspace: 1,
         item_list: Vec::<WindowItem>::new(),
         border: 2,
         bar_width: 13,
