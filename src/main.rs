@@ -219,6 +219,7 @@ impl<'a> State<'a> {
     // nudge pushes smaller windows to edges of screen,
     // uses vim bindings hjkl for what direction in which to nudge
     fn nudge(&mut self, opt: &[&str]) -> xcb::Result<()> {
+        // if there is a focused window
         if self.curr_win.is_some() {
             // get window's current dimensions
             let cookie = self.con.send_request(&x::GetGeometry {
@@ -232,7 +233,6 @@ impl<'a> State<'a> {
                 .position(|x| x.window == self.curr_win.unwrap())
                 .unwrap();
 
-            // init with garbage value because it will be overwritten
             let mut vals: Box<[x::ConfigWindow]> = Box::new([]);
             let scr_width = self.scr.width_in_pixels() as u32;
             let scr_height = self.scr.height_in_pixels() as u32;
@@ -381,6 +381,10 @@ fn main() -> xcb::Result<()> {
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -d"]},
         Key{key: 123, modf: none, func: State::spawn,
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -u"]},
+        Key{key: 125, modf: none, func: State::spawn,
+            args: &["zsh", "-c", "light -U 5"]},
+        Key{key: 126, modf: none, func: State::spawn,
+            args: &["zsh", "-c", "light -A 5"]},
         Key{key: 45, modf: alt, func: State::nudge, args: &["up"]},
         Key{key: 43, modf: alt, func: State::nudge, args: &["left"]},
         Key{key: 44, modf: alt, func: State::nudge, args: &["down"]},
