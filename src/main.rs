@@ -381,9 +381,9 @@ fn main() -> xcb::Result<()> {
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -d"]},
         Key{key: 123, modf: none, func: State::spawn,
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -u"]},
-        Key{key: 125, modf: none, func: State::spawn,
+        Key{key: 232, modf: none, func: State::spawn,
             args: &["zsh", "-c", "light -U 5"]},
-        Key{key: 126, modf: none, func: State::spawn,
+        Key{key: 233, modf: none, func: State::spawn,
             args: &["zsh", "-c", "light -A 5"]},
         Key{key: 45, modf: alt, func: State::nudge, args: &["up"]},
         Key{key: 43, modf: alt, func: State::nudge, args: &["left"]},
@@ -420,6 +420,7 @@ fn main() -> xcb::Result<()> {
         match state.con.wait_for_event()? {
             // keypress
             xcb::Event::X(x::Event::KeyPress(e)) => {
+                println!("{:?}", e.detail());
                 if e.detail() == 26 &&
                     e.state() == alt_shift {
 
