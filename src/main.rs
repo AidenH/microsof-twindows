@@ -359,8 +359,8 @@ fn main() -> xcb::Result<()> {
     };
 
     let none = KeyButMask::empty();
-    let alt = KeyButMask::MOD1;
-    let alt_shift = KeyButMask::MOD1 | KeyButMask::SHIFT;
+    let modk = KeyButMask::MOD1; // MOD1 = alt
+    let modk_shift = KeyButMask::MOD1 | KeyButMask::SHIFT;
 
     let i3lock = &["zsh", "-c", "i3lock -k -B 5 --ring-width 3 --ind-pos=\"80:700\" --radius 30 --time-pos=\"675:400\" --date-str=\"%a %b %d, %Y\" --time-color=ffffff --date-color=ffffff --verif-size=10 --verif-text=\"verifying\" --wrong-size=10 --wrong-text=\"wrong\" --verif-color=ffffff --wrong-color=ffffff"];
 
@@ -368,11 +368,11 @@ fn main() -> xcb::Result<()> {
     // KEYBINDS
     // --------
     let keys = vec![
-        Key{key: 24, modf: alt_shift, func: State::destroy_win, args: &[""]},
-        Key{key: 36, modf: alt, func: State::spawn, args: &["zsh", "-c", "st"]},
-        Key{key: 40, modf: alt, func: State::spawn, args: &["zsh", "-c", "dmenu_run"]},
-        Key{key: 53, modf: alt, func: State::spawn, args: i3lock},
-        Key{key: 56, modf: alt, func: State::spawn, args: &["zsh", "-c", "qutebrowser"]},
+        Key{key: 24, modf: modk_shift, func: State::destroy_win, args: &[""]},
+        Key{key: 36, modf: modk, func: State::spawn, args: &["zsh", "-c", "st"]},
+        Key{key: 40, modf: modk, func: State::spawn, args: &["zsh", "-c", "dmenu_run"]},
+        Key{key: 53, modf: modk, func: State::spawn, args: i3lock},
+        Key{key: 56, modf: modk, func: State::spawn, args: &["zsh", "-c", "qutebrowser"]},
         Key{key: 107, modf: none, func: State::spawn,
             args: &["zsh", "-c", "scrot -z ~/Pictures/screenshots/"]},
         Key{key: 121, modf: none, func: State::spawn,
@@ -385,11 +385,11 @@ fn main() -> xcb::Result<()> {
             args: &["zsh", "-c", "light -U 5"]},
         Key{key: 233, modf: none, func: State::spawn,
             args: &["zsh", "-c", "light -A 5"]},
-        Key{key: 45, modf: alt, func: State::nudge, args: &["up"]},
-        Key{key: 43, modf: alt, func: State::nudge, args: &["left"]},
-        Key{key: 44, modf: alt, func: State::nudge, args: &["down"]},
-        Key{key: 46, modf: alt, func: State::nudge, args: &["right"]},
-        Key{key: 27, modf: alt, func: State::nudge, args: &["reset"]},
+        Key{key: 45, modf: modk, func: State::nudge, args: &["up"]},
+        Key{key: 43, modf: modk, func: State::nudge, args: &["left"]},
+        Key{key: 44, modf: modk, func: State::nudge, args: &["down"]},
+        Key{key: 46, modf: modk, func: State::nudge, args: &["right"]},
+        Key{key: 27, modf: modk, func: State::nudge, args: &["reset"]},
     ];
 
     // set root attributes
@@ -424,7 +424,7 @@ fn main() -> xcb::Result<()> {
             xcb::Event::X(x::Event::KeyPress(e)) => {
                 println!("{:?}", e.detail());
                 if e.detail() == 26 &&
-                    e.state() == alt_shift {
+                    e.state() == modk_shift {
 
                     break Ok(());
                 }
