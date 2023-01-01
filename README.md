@@ -15,3 +15,6 @@ they can be found under the KEYBINDS heading near the bottom of main.rs.
 mtwm also allows for a startup script, located at ~/.microsof-twindows/autostart.sh.
 mine currently runs a ".fehbg &" and a simple dzen2 status bar script.
 don't forget to make your autostart executable :)
+
+![mtwm as of Apr 3, 2022](https://github.com/AidenH/microsof-twindows/blob/main/screenshots/apr-3-22.png)
+*mtwm as of Apr 3, 2022*
