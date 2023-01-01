@@ -9,8 +9,8 @@ struct State<'a> {
     item_list: Vec<WindowItem>,
     border: u32,
     bar_width: i32,
-    focus: u32,
-    defocus: u32,
+    focus_border: u32,
+    defocus_border: u32,
 }
 
 #[derive(Debug)]
@@ -160,7 +160,7 @@ fn focus(opt: bool, state: &State,  win: Window) -> xcb::Result<()> {
             let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
                 window: win,
                 value_list: &[
-                    x::Cw::BorderPixel(state.focus),
+                    x::Cw::BorderPixel(state.focus_border),
                 ],
             });
 
@@ -188,7 +188,7 @@ fn focus(opt: bool, state: &State,  win: Window) -> xcb::Result<()> {
             let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
                 window: win,
                 value_list: &[
-                    x::Cw::BorderPixel(state.defocus),
+                    x::Cw::BorderPixel(state.defocus_border),
                 ],
             });
 
@@ -347,8 +347,8 @@ fn main() -> xcb::Result<()> {
     // SETTINGS
     // --------
 
-    let focus_border = 0x0099dd;
-    let defocus_border = 0x444444;
+    let focus_border_color = 0x0099dd;
+    let defocus_border_color = 0x444444;
 
     let modk = KeyButMask::MOD1; // MOD1 = alt
     let modk_shift = KeyButMask::MOD1 | KeyButMask::SHIFT;
@@ -395,8 +395,8 @@ fn main() -> xcb::Result<()> {
         item_list: Vec::<WindowItem>::new(),
         border: 2,
         bar_width: 13,
-        focus: focus_border,
-        defocus: defocus_border,
+        focus_border: focus_border_color,
+        defocus_border: defocus_border_color,
     };
 
     // set root attributes
