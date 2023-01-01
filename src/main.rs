@@ -239,53 +239,40 @@ impl<'a> State<'a> {
 
             match opt[0] {
                 "up" => {
-                    if reply.y() == self.item_list[index].y as i16 {
-                        self.item_list[index].y = self.bar_width;
-                        self.item_list[index].height = scr_height;
-                        vals = Box::new([
-                            x::ConfigWindow::Y(self.bar_width),
-                            x::ConfigWindow::Height(
-                                scr_height - self.bar_width as u32 - self.border*2
-                            ),
-                        ]);
-                    }
+                    self.item_list[index].y = self.bar_width;
+                    self.item_list[index].height = scr_height;
+                    vals = Box::new([
+                        x::ConfigWindow::Y(self.bar_width),
+                        x::ConfigWindow::Height(
+                            scr_height - self.bar_width as u32 - self.border*2
+                        ),
+                    ]);
                 }
                 "left" => {
-                    if reply.x() == self.item_list[index].x as i16 {
-                        self.item_list[index].x = 0;
-                        self.item_list[index].width = scr_width;
-                        vals = Box::new([
-                            x::ConfigWindow::X(0),
-                            x::ConfigWindow::Width(scr_width - self.border*2),
-                        ]);
-                    }
+                    self.item_list[index].x = 0;
+                    self.item_list[index].width = scr_width;
+                    vals = Box::new([
+                        x::ConfigWindow::X(0),
+                        x::ConfigWindow::Width(scr_width - self.border*2),
+                    ]);
                 }
                 "down" => {
-                    println!("{:?}, {:?}", reply.height(), self.item_list[index].height);
-                    if reply.height() ==
-                        (self.item_list[index].height - (self.border*2)) as u16 {
-
-                        self.item_list[index].height =
-                            scr_height - reply.y() as u32;
-                        println!("height {:?}", self.item_list[index].height);
-                        vals = Box::new([
-                            x::ConfigWindow::Y(self.item_list[index].y),
-                            x::ConfigWindow::Height(self.item_list[index].height),
-                        ]);
-                    }
+                    self.item_list[index].height =
+                        scr_height - reply.y() as u32;
+                    println!("height {:?}", self.item_list[index].height);
+                    vals = Box::new([
+                        x::ConfigWindow::Y(self.item_list[index].y),
+                        x::ConfigWindow::Height(self.item_list[index].height),
+                    ]);
                 }
                 "right" => {
-                    if reply.width() ==
-                        (self.item_list[index].width - (self.border*2)) as u16 {
-
-                        self.item_list[index].width =
-                            (scr_width - reply.x() as u32) -
-                                self.border*2;
-                        vals = Box::new([
-                            x::ConfigWindow::X(self.item_list[index].x),
-                            x::ConfigWindow::Width(self.item_list[index].width),
-                        ]);
-                    }
+                    self.item_list[index].width =
+                        (scr_width - reply.x() as u32) -
+                            self.border*2;
+                    vals = Box::new([
+                        x::ConfigWindow::X(self.item_list[index].x),
+                        x::ConfigWindow::Width(self.item_list[index].width),
+                    ]);
                 }
                 "reset" => {
                     let revert = self.item_list[index].reverts.pop();
@@ -420,7 +407,6 @@ fn main() -> xcb::Result<()> {
         match state.con.wait_for_event()? {
             // keypress
             xcb::Event::X(x::Event::KeyPress(e)) => {
-                println!("{:?}", e.detail());
                 if e.detail() == 26 &&
                     e.state() == alt_shift {
 
