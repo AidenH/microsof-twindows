@@ -9,6 +9,8 @@ struct State<'a> {
     item_list: Vec<WindowItem>,
     border: u32,
     bar_width: i32,
+    focus: u32,
+    defocus: u32,
 }
 
 #[derive(Debug)]
@@ -149,14 +151,16 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
     Ok(state)
 }
 
-fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
+fn focus(opt: bool, state: &State,  win: Window) -> xcb::Result<()> {
+    let con = state.con;
+
     match opt {
         // focus
         true => {
             let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
                 window: win,
                 value_list: &[
-                    x::Cw::BorderPixel(0x0099dd),
+                    x::Cw::BorderPixel(state.focus),
                 ],
             });
 
@@ -184,7 +188,7 @@ fn focus(opt: bool, con: &xcb::Connection,  win: Window) -> xcb::Result<()> {
             let cookie = con.send_request_checked(&x::ChangeWindowAttributes {
                 window: win,
                 value_list: &[
-                    x::Cw::BorderPixel(0x444444),
+                    x::Cw::BorderPixel(state.defocus),
                 ],
             });
 
@@ -336,20 +340,15 @@ fn main() -> xcb::Result<()> {
     let setup = connection.get_setup();
     let screen = setup.roots().nth(scr_num as usize).unwrap();
 
-    let mut state = State {
-        con: &connection,
-        scr: &screen,
-        curr_win: None,
-        item_list: Vec::<WindowItem>::new(),
-        border: 2,
-        bar_width: 13,
-    };
+    let nonekey = KeyButMask::empty();
 
-    let none = KeyButMask::empty();
 
     // --------
     // SETTINGS
     // --------
+
+    let focus_border = 0x0099dd;
+    let defocus_border = 0x444444;
 
     let modk = KeyButMask::MOD1; // MOD1 = alt
     let modk_shift = KeyButMask::MOD1 | KeyButMask::SHIFT;
@@ -365,17 +364,17 @@ fn main() -> xcb::Result<()> {
         Key{key: 40, modf: modk, func: State::spawn, args: &["zsh", "-c", "dmenu_run"]},
         Key{key: 53, modf: modk, func: State::spawn, args: i3lock},
         Key{key: 56, modf: modk, func: State::spawn, args: &["zsh", "-c", "qutebrowser"]},
-        Key{key: 107, modf: none, func: State::spawn,
+        Key{key: 107, modf: nonekey, func: State::spawn,
             args: &["zsh", "-c", "scrot -z ~/Pictures/screenshots/"]},
-        Key{key: 121, modf: none, func: State::spawn,
+        Key{key: 121, modf: nonekey, func: State::spawn,
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -m"]},
-        Key{key: 122, modf: none, func: State::spawn,
+        Key{key: 122, modf: nonekey, func: State::spawn,
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -d"]},
-        Key{key: 123, modf: none, func: State::spawn,
+        Key{key: 123, modf: nonekey, func: State::spawn,
             args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -u"]},
-        Key{key: 232, modf: none, func: State::spawn,
+        Key{key: 232, modf: nonekey, func: State::spawn,
             args: &["zsh", "-c", "light -U 5"]},
-        Key{key: 233, modf: none, func: State::spawn,
+        Key{key: 233, modf: nonekey, func: State::spawn,
             args: &["zsh", "-c", "light -A 5"]},
         Key{key: 45, modf: modk, func: State::nudge, args: &["up"]},
         Key{key: 43, modf: modk, func: State::nudge, args: &["left"]},
@@ -387,6 +386,18 @@ fn main() -> xcb::Result<()> {
     // -------------
     // END SETTINGS
     // -------------
+
+
+    let mut state = State {
+        con: &connection,
+        scr: &screen,
+        curr_win: None,
+        item_list: Vec::<WindowItem>::new(),
+        border: 2,
+        bar_width: 13,
+        focus: focus_border,
+        defocus: defocus_border,
+    };
 
     // set root attributes
     let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
@@ -447,7 +458,7 @@ fn main() -> xcb::Result<()> {
             // enter
             xcb::Event::X(x::Event::EnterNotify(_e)) => {
                 state.curr_win = Some(_e.event());
-                focus(true, &state.con, _e.event())?;
+                focus(true, &state, _e.event())?;
             }
 
             // leave
@@ -456,7 +467,7 @@ fn main() -> xcb::Result<()> {
 
                 // if win_list contains _e's Window
                 if state.item_list.iter().any(|x| x.window == _e.event()) {
-                    focus(false, &state.con, _e.event())?;
+                    focus(false, &state, _e.event())?;
                 }
             }
 
