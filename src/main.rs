@@ -359,6 +359,11 @@ fn main() -> xcb::Result<()> {
     };
 
     let none = KeyButMask::empty();
+
+    // --------
+    // SETTINGS
+    // --------
+
     let modk = KeyButMask::MOD1; // MOD1 = alt
     let modk_shift = KeyButMask::MOD1 | KeyButMask::SHIFT;
 
@@ -391,6 +396,10 @@ fn main() -> xcb::Result<()> {
         Key{key: 46, modf: modk, func: State::nudge, args: &["right"]},
         Key{key: 27, modf: modk, func: State::nudge, args: &["reset"]},
     ];
+
+    // -------------
+    // END SETTINGS
+    // -------------
 
     // set root attributes
     let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
