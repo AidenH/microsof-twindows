@@ -7,6 +7,7 @@ struct State<'a> {
     scr: &'a x::Screen,
     curr_win: Option<Window>,
     item_list: Vec<WindowItem>,
+    shell: &'a str,
     border: u32,
     bar_width: i32,
     focus_border: u32,
@@ -324,28 +325,24 @@ impl<'a> State<'a> {
 
     // spawn new system process
     fn spawn(&mut self, in_args: &[&str]) -> xcb::Result<()> {
-        let (command, args) = in_args.split_at(1);
+        //let (command, args) = in_args.split_at(1);
 
-        Command::new(command[0])
-            .args(args)
+        Command::new(self.shell)
+            .args(in_args)
             .spawn()
             .expect("failed to spawn");
-
         Ok(())
     }
 }
 
 fn main() -> xcb::Result<()> {
-    let (connection, scr_num) = xcb::Connection::connect(None).unwrap();
-    let setup = connection.get_setup();
-    let screen = setup.roots().nth(scr_num as usize).unwrap();
-
     let nonekey = KeyButMask::empty();
-
 
     // --------
     // SETTINGS
     // --------
+
+    let shell = "zsh";
 
     let focus_border_color = 0x0099dd;
     let defocus_border_color = 0x444444;
@@ -353,29 +350,29 @@ fn main() -> xcb::Result<()> {
     let modk = KeyButMask::MOD1; // MOD1 = alt
     let modk_shift = KeyButMask::MOD1 | KeyButMask::SHIFT;
 
-    let i3lock = &["zsh", "-c", "i3lock -k -B 5 --ring-width 3 --ind-pos=\"80:700\" --radius 30 --time-pos=\"675:400\" --date-str=\"%a %b %d, %Y\" --time-color=ffffff --date-color=ffffff --verif-size=10 --verif-text=\"verifying\" --wrong-size=10 --wrong-text=\"wrong\" --verif-color=ffffff --wrong-color=ffffff"];
+    let i3lock = &["-c", "i3lock -k -B 5 --ring-width 3 --ind-pos=\"80:700\" --radius 30 --time-pos=\"675:400\" --date-str=\"%a %b %d, %Y\" --time-color=ffffff --date-color=ffffff --verif-size=10 --verif-text=\"verifying\" --wrong-size=10 --wrong-text=\"wrong\" --verif-color=ffffff --wrong-color=ffffff"];
 
     // --------
     // KEYBINDS
     // --------
     let keys = vec![
         Key{key: 24, modf: modk_shift, func: State::destroy_win, args: &[""]},
-        Key{key: 36, modf: modk, func: State::spawn, args: &["zsh", "-c", "st"]},
-        Key{key: 40, modf: modk, func: State::spawn, args: &["zsh", "-c", "dmenu_run"]},
+        Key{key: 36, modf: modk, func: State::spawn, args: &["-c", "st"]},
+        Key{key: 40, modf: modk, func: State::spawn, args: &["-c", "dmenu_run"]},
         Key{key: 53, modf: modk, func: State::spawn, args: i3lock},
-        Key{key: 56, modf: modk, func: State::spawn, args: &["zsh", "-c", "qutebrowser"]},
+        Key{key: 56, modf: modk, func: State::spawn, args: &["-c", "qutebrowser"]},
         Key{key: 107, modf: nonekey, func: State::spawn,
-            args: &["zsh", "-c", "scrot -z ~/Pictures/screenshots/"]},
+            args: &["-c", "scrot -z ~/Pictures/screenshots/"]},
         Key{key: 121, modf: nonekey, func: State::spawn,
-            args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -m"]},
+            args: &["-c", "~/.microsof-twindows/volctl.sh -m"]},
         Key{key: 122, modf: nonekey, func: State::spawn,
-            args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -d"]},
+            args: &["-c", "~/.microsof-twindows/volctl.sh -d"]},
         Key{key: 123, modf: nonekey, func: State::spawn,
-            args: &["zsh", "-c", "~/.microsof-twindows/volctl.sh -u"]},
+            args: &["-c", "~/.microsof-twindows/volctl.sh -u"]},
         Key{key: 232, modf: nonekey, func: State::spawn,
-            args: &["zsh", "-c", "light -U 5"]},
+            args: &["-c", "light -U 5"]},
         Key{key: 233, modf: nonekey, func: State::spawn,
-            args: &["zsh", "-c", "light -A 5"]},
+            args: &["-c", "light -A 5"]},
         Key{key: 45, modf: modk, func: State::nudge, args: &["up"]},
         Key{key: 43, modf: modk, func: State::nudge, args: &["left"]},
         Key{key: 44, modf: modk, func: State::nudge, args: &["down"]},
@@ -387,12 +384,16 @@ fn main() -> xcb::Result<()> {
     // END SETTINGS
     // -------------
 
+    let (connection, scr_num) = xcb::Connection::connect(None).unwrap();
+    let setup = connection.get_setup();
+    let screen = setup.roots().nth(scr_num as usize).unwrap();
 
     let mut state = State {
         con: &connection,
         scr: &screen,
         curr_win: None,
         item_list: Vec::<WindowItem>::new(),
+        shell,
         border: 2,
         bar_width: 13,
         focus_border: focus_border_color,
@@ -422,7 +423,7 @@ fn main() -> xcb::Result<()> {
     state.con.check_request(cookie)?;
 
     // autostart script
-    state.spawn(&["zsh", "-c", "~/.microsof-twindows/autostart.sh"])?;
+    state.spawn(&["-c", "~/.microsof-twindows/autostart.sh"])?;
 
     // main loop
     loop {
