@@ -8,6 +8,7 @@ struct State<'a> {
     curr_win: Option<Window>,
     item_list: Vec<WindowItem>,
     shell: &'a str,
+    max_window_splits: u8,
     border: u32,
     bar_width: i32,
     focus_border: u32,
@@ -25,7 +26,7 @@ struct WindowItem {
     width: u32,
     height: u32,
     reverts: Vec<GeomRevert>,
-    split_depth: i32,
+    split_depth: u8,
 }
 
 #[derive(Debug)]
@@ -44,7 +45,6 @@ struct Key<'a> {
 }
 
 fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
-    //let max_split_depth = 3;
     let mut win_item: WindowItem;
 
     // default full screen if no other windows open
@@ -96,14 +96,15 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         }
     }
 
-    // kept for the option of window split limits
-    /*if win_item.split_depth <= max_split_depth {
-        state.item_list.push(win_item);
-    }*/
+    // if enabled in settings, this will limit the number of window splits
+    if win_item.split_depth <= state.max_window_splits
+        && state.max_window_splits != 0 {
+    }
 
+    // push this window item into the window collection
     state.item_list.push(win_item);
 
-    // draw windows
+    // [re]draw all windows
     for i in &state.item_list {
         let cookie = state.con.send_request_checked(&x::ConfigureWindow {
             window: i.window,
@@ -344,6 +345,8 @@ fn main() -> xcb::Result<()> {
 
     let shell = "zsh";
 
+    let max_window_splits = 0;
+
     let focus_border_color = 0x0099dd;
     let defocus_border_color = 0x444444;
 
@@ -394,6 +397,7 @@ fn main() -> xcb::Result<()> {
         curr_win: None,
         item_list: Vec::<WindowItem>::new(),
         shell,
+        max_window_splits,
         border: 2,
         bar_width: 13,
         focus_border: focus_border_color,
