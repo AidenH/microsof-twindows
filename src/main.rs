@@ -120,7 +120,7 @@ fn add_window(mut state: State, w: Window) -> xcb::Result<State> {
         let cookie = state.con.send_request_checked(&x::ChangeWindowAttributes {
             window: i.window,
             value_list: &[
-                x::Cw::BorderPixel(0x444444),
+                x::Cw::BorderPixel(state.defocus_border),
                 x::Cw::EventMask(EventMask::KEY_PRESS |
                                  EventMask::ENTER_WINDOW |
                                  EventMask::LEAVE_WINDOW |
